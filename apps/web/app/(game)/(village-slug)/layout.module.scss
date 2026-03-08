@@ -1,23 +1,10 @@
-@each $skinVariantSelector, $imagesPath in $skinVariantPaths {
-  :global(html.skin-variant-#{$skinVariantSelector}) {
-    $base: '#{$imagesPath}/backgrounds';
+.background-image {
+  background: radial-gradient(ellipse at 50% 60%, #5a8f3c 0%, #4a7d32 30%, #3d6b2a 60%, #2d5420 100%);
 
-    .background-image {
-      background-size: cover;
-      background-repeat: no-repeat;
-      background-image: url('#{$base}/village-9-16.jpg');
-
-      @media (min-width: 1024px) {
-        background-image: url('#{$base}/village-16-9.jpg');
-      }
-
-      &--village {
-        background-image: url('#{$base}/village-9-16.jpg');
-
-        @media (min-width: 1024px) {
-          background-image: url('#{$base}/village-16-9.jpg');
-        }
-      }
-    }
+  &--village {
+    background:
+      radial-gradient(ellipse at 30% 40%, rgba(120, 170, 80, 0.3) 0%, transparent 50%),
+      radial-gradient(ellipse at 70% 60%, rgba(100, 150, 60, 0.25) 0%, transparent 45%),
+      radial-gradient(ellipse at 50% 50%, #5a8f3c 0%, #4a7d32 35%, #3d6b2a 65%, #2d5420 100%);
   }
 }

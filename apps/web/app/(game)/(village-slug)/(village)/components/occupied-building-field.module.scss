@@ -101,6 +101,8 @@
 @each $skinVariantSelector, $imagesPath in $skinVariantPaths {
   :global(html.skin-variant-#{$skinVariantSelector}) .building {
     $base: '#{$imagesPath}/buildings';
+    background-color: transparent !important;
+
     &-village {
       $villageBase: '#{$base}/village';
 
@@ -109,6 +111,7 @@
 
         &-#{$building} {
           background-image: url('#{$buildingBase}/#{$building}-tier-1.png');
+          background-color: transparent !important;
           background-repeat: no-repeat;
           background-position: center;
           background-size: contain;

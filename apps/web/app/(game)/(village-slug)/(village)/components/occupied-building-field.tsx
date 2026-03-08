@@ -203,7 +203,7 @@ const OccupiedBuildingFieldContent = ({
           buildingField,
           resourceFieldComposition: currentVillage.resourceFieldComposition,
         }),
-        'relative size-10 lg:size-16 select-none focus:outline-hidden',
+        'relative size-10 lg:size-16 select-none focus:outline-hidden !bg-transparent',
       )}
       {...props}
     >
@@ -215,7 +215,7 @@ const OccupiedBuildingFieldContent = ({
         />
       </div>
       {shouldShowBuildingNames && (
-        <span className="inline-flex flex-col lg:flex-row text-center text-3xs md:text-2xs px-0.5 md:px-1 z-10 bg-background border border-border rounded-xs whitespace-nowrap absolute left-1/2 -translate-x-1/2 -translate-y-1/2 top-[calc(50%+20px)] lg:top-[calc(50%+25px)]">
+        <span className="inline-flex flex-col lg:flex-row text-center text-3xs md:text-2xs px-0.5 md:px-1 z-10 bg-black/60 text-white border-0 rounded-xs whitespace-nowrap absolute left-1/2 -translate-x-1/2 -translate-y-1/2 top-[calc(50%+20px)] lg:top-[calc(50%+25px)]">
           {hasEvent && (
             <Countdown
               endsAt={

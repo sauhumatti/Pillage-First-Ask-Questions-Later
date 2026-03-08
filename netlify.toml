@@ -1,5 +1,5 @@
 [build]
-command = "npm run inject-graphics && cp -r custom-graphics/buildings/village apps/web/public/graphic-packs/default/buildings/village && turbo run build"
+command = "npm run inject-graphics && cp -r custom-graphics/buildings/village apps/web/public/graphic-packs/default/buildings/village && mkdir -p apps/web/public/graphic-packs/default/backgrounds && cp custom-graphics/backgrounds/village-*.jpg apps/web/public/graphic-packs/default/backgrounds/ && turbo run build"
 publish = "apps/web/build/client"
 image = "ubuntu-24.04"
 

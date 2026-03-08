@@ -199,11 +199,10 @@ const OccupiedBuildingFieldContent = ({
       data-building-field-id={buildingFieldId}
       tabIndex={0}
       className={clsx(
-        buildingFieldId <= 18 &&
-          dynamicCellClasses({
-            buildingField,
-            resourceFieldComposition: currentVillage.resourceFieldComposition,
-          }),
+        dynamicCellClasses({
+          buildingField,
+          resourceFieldComposition: currentVillage.resourceFieldComposition,
+        }),
         'relative size-10 lg:size-16 rounded-full select-none focus:outline-hidden focus:ring-2 focus:ring-black/80 dark:focus:ring-ring border border-black/10 dark:border-border',
       )}
       {...props}

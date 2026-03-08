@@ -108,7 +108,7 @@
         $buildingBase: '#{$villageBase}/#{$building}';
 
         &-#{$building} {
-          background-image: url('#{$buildingBase}/#{$building}-tier-1.avif');
+          background-image: url('#{$buildingBase}/#{$building}-tier-1.png');
           background-repeat: no-repeat;
           background-position: center;
           background-size: contain;

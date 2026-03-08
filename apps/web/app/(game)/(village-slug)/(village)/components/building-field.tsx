@@ -27,6 +27,7 @@ export const BuildingField = ({ buildingFieldId }: BuildingFieldProps) => {
         positioningStyles,
         'absolute -translate-x-1/2 -translate-y-1/2 flex items-center justify-center',
       )}
+      style={{ backgroundColor: 'transparent' }}
     >
       {buildingField === null ? (
         <EmptyBuildingField buildingFieldId={buildingFieldId} />

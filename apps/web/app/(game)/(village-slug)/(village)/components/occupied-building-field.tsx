@@ -203,8 +203,9 @@ const OccupiedBuildingFieldContent = ({
           buildingField,
           resourceFieldComposition: currentVillage.resourceFieldComposition,
         }),
-        'relative size-10 lg:size-16 select-none focus:outline-hidden !bg-transparent',
+        'relative block size-10 lg:size-16 select-none focus:outline-hidden',
       )}
+      style={{ backgroundColor: 'transparent' }}
       {...props}
     >
       <div className="absolute bottom-0 right-0 z-10">

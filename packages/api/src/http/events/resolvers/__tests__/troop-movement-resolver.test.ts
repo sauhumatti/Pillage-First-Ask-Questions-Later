@@ -2431,3 +2431,175 @@ describe('scouting', () => {
     expect(selectReturnEvent(database)).toBeNull();
   });
 });
+
+describe('siege', () => {
+  // The first NPC village has a level 20 teutonic wall
+  const setUpTarget = (database: DbFacade) => {
+    const target = database.selectObject({
+      sql: 'SELECT id, tile_id FROM villages WHERE id != 1 LIMIT 1;',
+      schema: z.strictObject({ id: z.number(), tile_id: z.number() }),
+    })!;
+
+    database.exec({
+      sql: 'DELETE FROM troops WHERE tile_id = $tile_id;',
+      bind: { $tile_id: target.tile_id },
+    });
+
+    database.exec({
+      sql: `
+        DELETE FROM building_fields
+        WHERE
+          village_id = $village_id
+          AND (
+            field_id = 25
+            OR building_id = (SELECT id FROM building_ids WHERE building = 'TOURNAMENT_SQUARE')
+          );
+      `,
+      bind: { $village_id: target.id },
+    });
+
+    database.exec({
+      sql: `
+        INSERT INTO building_fields (village_id, field_id, building_id, level)
+        VALUES ($village_id, 25, (SELECT id FROM building_ids WHERE building = 'TOURNAMENT_SQUARE'), 10);
+      `,
+      bind: { $village_id: target.id },
+    });
+
+    return target;
+  };
+
+  const selectBuildingLevel = (
+    database: DbFacade,
+    villageId: number,
+    buildingId: string,
+  ) =>
+    database.selectValue({
+      sql: `
+        SELECT MAX(bf.level)
+        FROM building_fields bf JOIN building_ids bi ON bi.id = bf.building_id
+        WHERE bf.village_id = $village_id AND bi.building = $building_id;
+      `,
+      bind: { $village_id: villageId, $building_id: buildingId },
+      schema: z.number().nullable(),
+    });
+
+  const attack = (
+    database: DbFacade,
+    type: 'attack' | 'raid',
+    targetTileId: number,
+    troops: {
+      unitId: 'IMPERIAN' | 'ROMAN_RAM' | 'ROMAN_CATAPULT';
+      amount: number;
+    }[],
+    catapultTargets?: ('TOURNAMENT_SQUARE' | 'random')[],
+  ) => {
+    const originTileId = getVillageTileId(database, 1);
+    const createMock =
+      type === 'attack'
+        ? createTroopMovementAttackEventMock
+        : createTroopMovementRaidEventMock;
+    const resolver =
+      type === 'attack' ? attackMovementResolver : raidMovementResolver;
+
+    resolver(
+      database,
+      createMock({
+        id: 30,
+        startsAt: 5_000,
+        duration: 500,
+        villageId: 1,
+        originTileId,
+        targetTileId,
+        catapultTargets,
+        troops: troops.map(({ unitId, amount }) => ({
+          unitId,
+          amount,
+          tileId: originTileId,
+          sourceTileId: originTileId,
+        })),
+      }) as never,
+    );
+  };
+
+  test('rams knock down the wall in a normal attack', async () => {
+    const database = await prepareTestDatabase();
+    const target = setUpTarget(database);
+
+    expect(selectBuildingLevel(database, target.id, 'TEUTONIC_WALL')).toBe(20);
+
+    attack(database, 'attack', target.tile_id, [
+      { unitId: 'IMPERIAN', amount: 2000 },
+      { unitId: 'ROMAN_RAM', amount: 200 },
+    ]);
+
+    const wallLevel = selectBuildingLevel(
+      database,
+      target.id,
+      'TEUTONIC_WALL',
+    )!;
+
+    expect(wallLevel).toBeLessThan(20);
+
+    const wallBonus = database.selectValue({
+      sql: `
+        SELECT e.value
+        FROM effects e
+          JOIN effect_ids ei ON ei.id = e.effect_id
+          JOIN effect_type_ids et ON et.id = e.type_id
+        WHERE
+          e.tile_id = $tile_id
+          AND ei.effect = 'infantryDefence'
+          AND et.type = 'bonus'
+          AND e.source_specifier = 40;
+      `,
+      bind: { $tile_id: target.tile_id },
+      schema: z.number(),
+    });
+
+    // The wall's defence effect follows its new level
+    expect(wallBonus).toBeLessThan(1.49);
+  });
+
+  test('catapults damage the chosen building', async () => {
+    const database = await prepareTestDatabase();
+    const target = setUpTarget(database);
+
+    attack(
+      database,
+      'attack',
+      target.tile_id,
+      [
+        { unitId: 'IMPERIAN', amount: 3000 },
+        { unitId: 'ROMAN_CATAPULT', amount: 100 },
+      ],
+      ['TOURNAMENT_SQUARE'],
+    );
+
+    expect(
+      selectBuildingLevel(database, target.id, 'TOURNAMENT_SQUARE') ?? 0,
+    ).toBeLessThan(10);
+  });
+
+  test('siege units do nothing in a raid', async () => {
+    const database = await prepareTestDatabase();
+    const target = setUpTarget(database);
+
+    attack(
+      database,
+      'raid',
+      target.tile_id,
+      [
+        { unitId: 'IMPERIAN', amount: 3000 },
+        { unitId: 'ROMAN_RAM', amount: 200 },
+        { unitId: 'ROMAN_CATAPULT', amount: 100 },
+      ],
+      ['TOURNAMENT_SQUARE'],
+    );
+
+    expect(selectBuildingLevel(database, target.id, 'TEUTONIC_WALL')).toBe(20);
+    expect(selectBuildingLevel(database, target.id, 'TOURNAMENT_SQUARE')).toBe(
+      10,
+    );
+  });
+});

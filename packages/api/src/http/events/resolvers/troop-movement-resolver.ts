@@ -8,6 +8,7 @@ import {
   type Building,
   buildingIdSchema,
 } from '@pillage-first/types/models/building';
+import { specialFieldIds } from '@pillage-first/types/models/building-field';
 import type { GameEvent } from '@pillage-first/types/models/game-event';
 import { resourceFieldCompositionSchema } from '@pillage-first/types/models/resource-field-composition';
 import { playableTribeSchema } from '@pillage-first/types/models/tribe';
@@ -32,6 +33,7 @@ import {
   selectNewVillageFoundationTileByTileIdAndPlayerIdQuery,
   selectRelocationTargetVillageIdByTileIdQuery,
   selectTargetVillageIdByTileIdQuery,
+  shiftPendingBuildingEventLevelsQuery,
   updateCompletedHeroAdventuresByHeroIdQuery,
   updateHeroAfterAdventureByHeroIdQuery,
 } from '../../../queries/troop-movement-queries';
@@ -54,6 +56,7 @@ import {
   insertVillageFoundedReport,
 } from '../../../utils/report';
 import {
+  type DamagedBuilding,
   isScoutingMovement,
   resolveOffensiveMovement,
   resolveScoutingMovement,
@@ -66,6 +69,10 @@ import {
 } from '../../../utils/village';
 import { apiEffectSchema } from '../../../utils/zod/effect-schemas';
 import type { Resolver } from '../resolver';
+import {
+  buildingDestructionResolver,
+  buildingLevelChangeResolver,
+} from './building-resolvers';
 
 export const adventureMovementResolver: Resolver<
   GameEvent<'troopMovementAdventure'>
@@ -477,6 +484,48 @@ export const reinforcementMovementResolver: Resolver<
   };
 };
 
+// Lowers damaged buildings through the regular building resolvers, so effects and population stay in sync
+const applyBuildingDamage = (
+  database: Parameters<Resolver<GameEvent<'troopMovementAttack'>>>[0],
+  villageId: number,
+  damagedBuildings: DamagedBuilding[],
+  timestamp: number,
+) => {
+  for (const { fieldId, buildingId, level, levelAfter } of damagedBuildings) {
+    const isNonDestroyable = specialFieldIds.includes(fieldId);
+
+    if (levelAfter === 0 && !isNonDestroyable) {
+      buildingDestructionResolver(database, {
+        villageId,
+        buildingFieldId: fieldId,
+        buildingId,
+        level: 0,
+        previousLevel: level,
+        resolvesAt: timestamp,
+      } as GameEvent<'buildingDestruction'>);
+    } else {
+      buildingLevelChangeResolver(database, {
+        villageId,
+        buildingFieldId: fieldId,
+        buildingId,
+        level: levelAfter,
+        previousLevel: level,
+        resolvesAt: timestamp,
+      } as GameEvent<'buildingLevelChange'>);
+    }
+
+    // Queued upgrades continue from the damaged level
+    database.exec({
+      sql: shiftPendingBuildingEventLevelsQuery,
+      bind: {
+        $village_id: villageId,
+        $building_field_id: fieldId,
+        $levels_lost: level - levelAfter,
+      },
+    });
+  }
+};
+
 export const attackMovementResolver: Resolver<
   GameEvent<'troopMovementAttack'>
 > = (database, args) => {
@@ -512,12 +561,22 @@ export const attackMovementResolver: Resolver<
     }
   }
 
-  const { loot, survivingTroops } = isScoutingMovement(args)
+  const { loot, survivingTroops, damagedBuildings } = isScoutingMovement(args)
     ? {
         loot: undefined,
+        damagedBuildings: [],
         ...resolveScoutingMovement(database, args, targetVillageId),
       }
     : resolveOffensiveMovement(database, args, targetVillageId, crannyCapacity);
+
+  if (targetVillageId !== null) {
+    applyBuildingDamage(
+      database,
+      targetVillageId,
+      damagedBuildings,
+      resolvesAt,
+    );
+  }
 
   if (survivingTroops.length > 0) {
     createEvents<'troopMovementReturn'>(database, {

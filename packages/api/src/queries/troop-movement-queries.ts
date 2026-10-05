@@ -338,3 +338,29 @@ export const selectDefensiveStructuresByVillageIdQuery = `
     AND (bi.building LIKE '%_WALL' OR bi.building IN ('RESIDENCE', 'CRANNY'))
   GROUP BY bi.building;
 `;
+
+export const selectBuildingFieldsForSiegeByVillageIdQuery = `
+  SELECT
+    bf.field_id AS fieldId,
+    bi.building AS buildingId,
+    bf.level
+  FROM
+    building_fields bf
+    JOIN building_ids bi ON bi.id = bf.building_id
+  WHERE
+    bf.village_id = $village_id
+    AND bf.level > 0;
+`;
+
+export const shiftPendingBuildingEventLevelsQuery = `
+  UPDATE events
+  SET meta = json_set(
+    meta,
+    '$.level', MAX(1, json_extract(meta, '$.level') - $levels_lost),
+    '$.previousLevel', MAX(0, json_extract(meta, '$.previousLevel') - $levels_lost)
+  )
+  WHERE
+    village_id = $village_id
+    AND type IN ('buildingLevelChange', 'buildingConstruction')
+    AND json_extract(meta, '$.buildingFieldId') = $building_field_id;
+`;

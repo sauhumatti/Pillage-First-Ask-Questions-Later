@@ -3,7 +3,12 @@ import {
   BASIC_VILLAGE_DEFENCE,
   type CombatUnit,
   calculateBattle,
+  calculateDemolitionPoints,
+  calculateInBattleWallLevel,
+  calculateLevelAfterDemolition,
   calculateLossExponent,
+  calculateSiegeEfficiency,
+  calculateSiegeUpgradeFactor,
   calculateSmithyImprovedValue,
   calculateUnitLosses,
 } from '../combat';
@@ -231,4 +236,92 @@ describe('calculateSmithyImprovedValue', () => {
   test('matches the documented clubswinger value at level 20', () => {
     expect(calculateSmithyImprovedValue(40, 1, 20)).toBeCloseTo(52.4048, 3);
   });
+});
+
+// Siege cases are taken from Kirilloid's simulator tests (src/model/base/combat/fns.spec.ts)
+describe('siege', () => {
+  test('siege efficiency', () => {
+    expect(calculateSiegeEfficiency(0)).toBe(0);
+    expect(calculateSiegeEfficiency(1)).toBe(0.5);
+    expect(calculateSiegeEfficiency(Number.POSITIVE_INFINITY)).toBe(1);
+  });
+
+  test('upgrade factor is rounded to 0.005', () => {
+    expect(calculateSiegeUpgradeFactor(0)).toBe(1);
+    expect(calculateSiegeUpgradeFactor(20)).toBeCloseTo(1.5, 10);
+  });
+
+  test.each([
+    [0, 6],
+    [6, 6],
+    [7, 5],
+    [15, 4],
+    [16, 3],
+    [21, 1],
+    [21.5, 0],
+    [22, 0],
+  ])('%d demolition points take a level 6 building to %i', (points, level) => {
+    expect(calculateLevelAfterDemolition(6, points)).toBe(level);
+  });
+
+  test.each([
+    [1, 0.825481812, 1.5],
+    [13, 0.88100169, 21.5],
+  ])(
+    '%i catapults cross %d points around ratio %d',
+    (units, ratio, threshold) => {
+      expect(calculateDemolitionPoints(units, 0, ratio - 1e-8)).toBeLessThan(
+        threshold,
+      );
+      expect(calculateDemolitionPoints(units, 0, ratio + 1e-8)).toBeGreaterThan(
+        threshold,
+      );
+    },
+  );
+
+  test.each([
+    [
+      'romans',
+      1,
+      20,
+      [
+        0, 39, 74, 105, 132, 155, 174, 189, 200, 207, 210, 230, 281, 334, 390,
+        449, 510, 573, 639, 708, 779,
+      ],
+    ],
+    [
+      'teutons',
+      5,
+      20,
+      [
+        0, 195, 370, 525, 660, 775, 870, 945, 1000, 1035, 1050, 1150, 1405,
+        1672, 1952, 2245, 2550, 2867, 3197, 3540, 3895,
+      ],
+    ],
+    [
+      'gauls',
+      2,
+      19,
+      [
+        0, 74, 140, 198, 248, 290, 324, 350, 368, 378, 420, 522, 629, 741, 858,
+        980, 1107, 1239, 1376, 1518,
+      ],
+    ],
+  ])(
+    '%s wall thresholds during battle',
+    (_, durability, wallLevel, thresholds) => {
+      thresholds.forEach((points, levelsLost) => {
+        expect(
+          calculateInBattleWallLevel(
+            wallLevel,
+            points * (1 - Number.EPSILON),
+            durability,
+          ),
+        ).toBe(Math.max(0, Math.min(wallLevel, wallLevel + 1 - levelsLost)));
+        expect(calculateInBattleWallLevel(wallLevel, points, durability)).toBe(
+          wallLevel - levelsLost,
+        );
+      });
+    },
+  );
 });

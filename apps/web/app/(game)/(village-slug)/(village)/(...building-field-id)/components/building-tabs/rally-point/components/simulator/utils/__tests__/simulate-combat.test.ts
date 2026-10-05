@@ -132,4 +132,18 @@ describe(simulateCombat, () => {
     // (100 · 40 + 80) · 1.1 · 1.1
     expect(result.attackerPoints).toBe(Math.round(4080 * 1.1 * 1.1));
   });
+
+  test('rams lower the wall in a normal attack but not in a raid', () => {
+    const state = createState();
+    state.attacker.troops = [
+      { unitId: 'IMPERIAN', amount: 2000, smithyImprovementLevel: 0 },
+      { unitId: 'ROMAN_RAM', amount: 200, smithyImprovementLevel: 0 },
+    ];
+    state.defender.village.wallLevel = 20;
+
+    expect(simulateCombat(state)!.wallLevelAfter).toBeLessThan(20);
+    expect(
+      simulateCombat({ ...state, combatMode: 'raid' })!.wallLevelAfter,
+    ).toBeNull();
+  });
 });

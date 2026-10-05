@@ -98,6 +98,14 @@ export const CombatSimulatorResults = () => {
           defence: formatNumber(result.defenderPoints),
         })}
       </Text>
+      {result.wallLevelAfter !== null && (
+        <Text>
+          {t('Wall level: {{before}} → {{after}}', {
+            before: formatNumber(state.defender.village.wallLevel),
+            after: formatNumber(result.wallLevelAfter),
+          })}
+        </Text>
+      )}
       <ResultTable
         title={t('Attacker')}
         units={result.attacker}

@@ -156,3 +156,93 @@ export const calculateBattle = ({
 export const calculateUnitLosses = (amount: number, lossRatio: number) => {
   return Math.min(amount, Math.round(amount * lossRatio));
 };
+
+// Siege formulas are ported from Kirilloid's Travian simulator
+// (https://github.com/kirilloid/travian, ISC license), src/model/base/combat/fns.ts
+
+const roundToStep = (value: number, step: number) =>
+  Math.round(value / step) * step;
+
+// Smithy upgrades make rams and catapults stronger
+export const calculateSiegeUpgradeFactor = (upgradeLevel: number): number => {
+  return roundToStep(1.0205 ** upgradeLevel, 0.005);
+};
+
+// How well siege units work, from the ratio of attack to defence points (0 to 1)
+export const calculateSiegeEfficiency = (pointsRatio: number): number => {
+  return (pointsRatio > 1 ? 2 - pointsRatio ** -1.5 : pointsRatio ** 1.5) / 2;
+};
+
+// D = 4σ · C
+export const calculateDemolitionPoints = (
+  units: number,
+  upgradeLevel: number,
+  pointsRatio: number,
+  durability = 1,
+): number => {
+  return (
+    4 *
+    calculateSiegeEfficiency(pointsRatio) *
+    Math.floor(units / durability) *
+    calculateSiegeUpgradeFactor(upgradeLevel)
+  );
+};
+
+// Each level costs as many points as its own level number to knock down
+export const calculateLevelAfterDemolition = (
+  level: number,
+  demolitionPoints: number,
+): number => {
+  let damage = demolitionPoints - 0.5;
+  let currentLevel = level;
+
+  if (damage < 0) {
+    return currentLevel;
+  }
+
+  while (damage >= currentLevel && currentLevel > 0) {
+    damage -= currentLevel;
+    currentLevel -= 1;
+  }
+
+  return currentLevel;
+};
+
+// Demolition points needed to lower a wall from `level` to each lower level during the battle
+const earlyRamTable: number[][] = Array.from({ length: 21 }, (_, level) => {
+  const row: number[] = [];
+  let l = 0;
+
+  for (; l <= level / 2; l++) {
+    row.push(-2 * l ** 2 + (2 * level + 1) * l);
+  }
+
+  const base = (level * (level + 1)) / 2 + 20;
+
+  for (; l <= level; l++) {
+    const dl = l - Math.floor(level / 2) - 1;
+    row.push(1.25 * dl ** 2 + 49.75 * dl + base);
+  }
+
+  row.push(Number.POSITIVE_INFINITY);
+
+  return row;
+});
+
+// Rams first lower the wall level used for the battle itself
+export const calculateInBattleWallLevel = (
+  wallLevel: number,
+  demolitionPoints: number,
+  wallDurability: number,
+): number => {
+  const row = earlyRamTable[Math.min(Math.max(0, wallLevel), 20)]!;
+  let demolished = 0;
+
+  while (
+    Math.floor(wallDurability * row[demolished + 1]!) <= demolitionPoints
+  ) {
+    demolished += 1;
+  }
+
+  return Math.max(0, wallLevel - demolished);
+};

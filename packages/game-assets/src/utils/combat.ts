@@ -49,6 +49,45 @@ const getBuildingEffectValue = (
   return effect.valuesPerLevel[clampedLevel] ?? null;
 };
 
+// How hard a wall is to ram, from Kirilloid's simulator. Spartan durability is unknown, so it uses the default.
+const tribeToWallDurability = new Map<Tribe, number>([
+  ['romans', 1],
+  ['gauls', 2],
+  ['teutons', 5],
+  ['egyptians', 5],
+  ['huns', 1],
+  ['spartans', 1],
+  ['natars', 5],
+  ['nature', 1],
+]);
+
+export const getWallDurabilityByTribe = (tribe: Tribe): number => {
+  return tribeToWallDurability.get(tribe) ?? 1;
+};
+
+export const getWallDefenceAtLevel = (tribe: Tribe, level: number) => {
+  const wallBuildingId = getWallBuildingIdByTribe(tribe);
+
+  return {
+    base:
+      getBuildingEffectValue(
+        wallBuildingId,
+        tribe,
+        'infantryDefence',
+        'base',
+        level,
+      ) ?? 0,
+    bonus:
+      getBuildingEffectValue(
+        wallBuildingId,
+        tribe,
+        'infantryDefence',
+        'bonus',
+        level,
+      ) ?? 1,
+  };
+};
+
 type VillageDefenceModifiersArgs = {
   tribe: Tribe;
   wallLevel: number;

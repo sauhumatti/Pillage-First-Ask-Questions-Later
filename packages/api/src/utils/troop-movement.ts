@@ -4,6 +4,8 @@ import {
   calculateHeroBonusMultiplier,
   createCombatUnit,
   createHeroCombatUnit,
+  getWallDefenceAtLevel,
+  getWallDurabilityByTribe,
 } from '@pillage-first/game-assets/utils/combat';
 import {
   calculateLootableCarryCapacity,
@@ -15,7 +17,10 @@ import {
   type Building,
   buildingIdSchema,
 } from '@pillage-first/types/models/building';
-import type { GameEvent } from '@pillage-first/types/models/game-event';
+import type {
+  CatapultTarget,
+  GameEvent,
+} from '@pillage-first/types/models/game-event';
 import type {
   ResourceBundle,
   Resources,
@@ -30,6 +35,9 @@ import {
   type CalculateBattleReturn,
   type CombatUnit,
   calculateBattle,
+  calculateDemolitionPoints,
+  calculateInBattleWallLevel,
+  calculateLevelAfterDemolition,
   calculateUnitLosses,
 } from '@pillage-first/utils/game/combat';
 import {
@@ -38,6 +46,7 @@ import {
 } from '../queries/effect-queries';
 import {
   selectBattleReportParticipantsByTargetTileIdQuery,
+  selectBuildingFieldsForSiegeByVillageIdQuery,
   selectCombatTroopsByTileIdQuery,
   selectDefensiveStructuresByVillageIdQuery,
   selectHasHeroHealthRegenerationEventQuery,
@@ -398,9 +407,147 @@ const getBattleOutcome = (
   return 'attackerSomeLoss';
 };
 
+type SiegeBuildingField = {
+  fieldId: number;
+  buildingId: Building['id'];
+  level: number;
+};
+
+export type DamagedBuilding = SiegeBuildingField & { levelAfter: number };
+
+type SiegeContext = {
+  defenderTribe: Tribe;
+  wall: SiegeBuildingField | null;
+  // Buildings catapults can hit. The wall can only be damaged by rams.
+  targets: SiegeBuildingField[];
+  rams: { amount: number; upgradeLevel: number };
+  catapults: { amount: number; upgradeLevel: number };
+};
+
+const getPointsRatio = ({
+  attackerPoints,
+  defenderPoints,
+}: CalculateBattleReturn) =>
+  defenderPoints > 0
+    ? attackerPoints / defenderPoints
+    : Number.POSITIVE_INFINITY;
+
+const selectSiegeContext = (
+  database: DbFacade,
+  troops: Troop[],
+  targetVillageId: number,
+  targetTileId: number,
+  getUpgradeLevel: (unitId: UnitId) => number,
+): SiegeContext => {
+  const rams = { amount: 0, upgradeLevel: 0 };
+  const catapults = { amount: 0, upgradeLevel: 0 };
+
+  for (const { unitId, amount } of troops) {
+    if (unitId === 'HERO') {
+      continue;
+    }
+
+    const { tier } = getUnitDefinition(unitId);
+
+    if (tier === 'siege-ram') {
+      rams.amount += amount;
+      rams.upgradeLevel = getUpgradeLevel(unitId);
+    }
+
+    if (tier === 'siege-catapult') {
+      catapults.amount += amount;
+      catapults.upgradeLevel = getUpgradeLevel(unitId);
+    }
+  }
+
+  const fields = database.selectObjects({
+    sql: selectBuildingFieldsForSiegeByVillageIdQuery,
+    bind: { $village_id: targetVillageId },
+    schema: z.strictObject({
+      fieldId: z.number(),
+      buildingId: buildingIdSchema,
+      level: z.number(),
+    }),
+  });
+
+  const isWall = ({ buildingId }: SiegeBuildingField) =>
+    buildingId.endsWith('_WALL');
+
+  return {
+    defenderTribe: selectTribeByTileId(database, targetTileId),
+    wall: fields.find(isWall) ?? null,
+    targets: fields.filter((field) => !isWall(field)),
+    rams,
+    catapults,
+  };
+};
+
+const pickRandom = <T>(items: T[]): T | undefined => {
+  return items[Math.floor(Math.random() * items.length)];
+};
+
+// Catapults are split evenly between up to two targets. A target that doesn't exist is replaced by a random building.
+const resolveCatapultDamage = (
+  { targets, catapults }: SiegeContext,
+  catapultTargets: CatapultTarget[],
+  pointsRatio: number,
+): DamagedBuilding[] => {
+  const requestedTargets: CatapultTarget[] =
+    catapultTargets.length > 0 ? catapultTargets : ['random'];
+  const levelByFieldId = new Map(
+    targets.map(({ fieldId, level }) => [fieldId, level]),
+  );
+  const damagedBuildings: DamagedBuilding[] = [];
+
+  const points = calculateDemolitionPoints(
+    catapults.amount / requestedTargets.length,
+    catapults.upgradeLevel,
+    pointsRatio,
+  );
+
+  for (const target of requestedTargets) {
+    const standing = targets.filter(
+      ({ fieldId }) => (levelByFieldId.get(fieldId) ?? 0) > 0,
+    );
+
+    const matching = standing
+      .filter(({ buildingId }) => buildingId === target)
+      .sort(
+        (a, b) =>
+          levelByFieldId.get(b.fieldId)! - levelByFieldId.get(a.fieldId)!,
+      );
+
+    const field = matching[0] ?? pickRandom(standing);
+
+    if (!field) {
+      continue;
+    }
+
+    const level = levelByFieldId.get(field.fieldId)!;
+    const levelAfter = calculateLevelAfterDemolition(level, points);
+
+    if (levelAfter < level) {
+      levelByFieldId.set(field.fieldId, levelAfter);
+
+      const existing = damagedBuildings.find(
+        ({ fieldId }) => fieldId === field.fieldId,
+      );
+
+      if (existing) {
+        existing.levelAfter = levelAfter;
+      } else {
+        damagedBuildings.push({ ...field, level, levelAfter });
+      }
+    }
+  }
+
+  return damagedBuildings;
+};
+
 type ResolveOffensiveMovementReturn = {
   loot: ResourceBundle;
   survivingTroops: Troop[];
+  damagedBuildings: DamagedBuilding[];
 };
 
 export const resolveOffensiveMovement = (
@@ -476,22 +623,92 @@ export const resolveOffensiveMovement = (
     return [createCombatUnit(unitId, amount, getSmithyLevel(playerId, unitId))];
   };
 
-  const battle: CalculateBattleReturn = calculateBattle({
-    attackers: troops.flatMap(({ unitId, amount }) =>
-      toCombatUnit(unitId, amount, attackerPlayerId, attackingHero),
-    ),
-    defenders: stationedTroops.flatMap(({ unitId, amount, playerId }) =>
-      toCombatUnit(unitId, amount, playerId, defendingHero),
-    ),
-    isRaid,
-    attackMultiplier:
-      attackMultiplier *
-      calculateHeroBonusMultiplier((attackingHero?.attackBonus ?? 0) / 2),
-    defenceMultiplier:
-      defenceMultiplier *
-      calculateHeroBonusMultiplier((defendingHero?.defenceBonus ?? 0) / 2),
-    flatDefence,
-  });
+  const runBattle = (
+    battleFlatDefence: number,
+    battleDefenceMultiplier: number,
+  ): CalculateBattleReturn =>
+    calculateBattle({
+      attackers: troops.flatMap(({ unitId, amount }) =>
+        toCombatUnit(unitId, amount, attackerPlayerId, attackingHero),
+      ),
+      defenders: stationedTroops.flatMap(({ unitId, amount, playerId }) =>
+        toCombatUnit(unitId, amount, playerId, defendingHero),
+      ),
+      isRaid,
+      attackMultiplier:
+        attackMultiplier *
+        calculateHeroBonusMultiplier((attackingHero?.attackBonus ?? 0) / 2),
+      defenceMultiplier:
+        battleDefenceMultiplier *
+        calculateHeroBonusMultiplier((defendingHero?.defenceBonus ?? 0) / 2),
+      flatDefence: battleFlatDefence,
+    });
+
+  let battle = runBattle(flatDefence, defenceMultiplier);
+
+  // Rams and catapults only work in normal attacks on villages
+  const siege =
+    !isRaid && targetVillageId !== null
+      ? selectSiegeContext(
+          database,
+          troops,
+          targetVillageId,
+          targetTileId,
+          (unitId) => getSmithyLevel(attackerPlayerId, unitId),
+        )
+      : null;
+
+  const damagedBuildings: DamagedBuilding[] = [];
+
+  if (siege !== null && siege.rams.amount > 0 && siege.wall !== null) {
+    const { wall, defenderTribe } = siege;
+
+    // Rams lower the wall used in the battle, then the battle is fought again
+    const earlyPoints = calculateDemolitionPoints(
+      siege.rams.amount,
+      siege.rams.upgradeLevel,
+      getPointsRatio(battle),
+    );
+    const inBattleWallLevel = calculateInBattleWallLevel(
+      wall.level,
+      earlyPoints,
+      getWallDurabilityByTribe(defenderTribe),
+    );
+    const currentWallDefence = getWallDefenceAtLevel(defenderTribe, wall.level);
+    const inBattleWallDefence = getWallDefenceAtLevel(
+      defenderTribe,
+      inBattleWallLevel,
+    );
+
+    battle = runBattle(
+      flatDefence - currentWallDefence.base + inBattleWallDefence.base,
+      (defenceMultiplier / currentWallDefence.bonus) *
+        inBattleWallDefence.bonus,
+    );
+
+    const levelAfter = calculateLevelAfterDemolition(
+      wall.level,
+      calculateDemolitionPoints(
+        siege.rams.amount,
+        siege.rams.upgradeLevel,
+        getPointsRatio(battle),
+      ),
+    );
+
+    if (levelAfter < wall.level) {
+      damagedBuildings.push({ ...wall, levelAfter });
+    }
+  }
+
+  if (siege !== null && siege.catapults.amount > 0) {
+    damagedBuildings.push(
+      ...resolveCatapultDamage(
+        siege,
+        args.catapultTargets ?? [],
+        getPointsRatio(battle),
+      ),
+    );
+  }
 
   // Defender losses
   const deadDefenders: Troop[] = [];
@@ -632,9 +849,16 @@ export const resolveOffensiveMovement = (
     },
     defender: withAmountAfter(defender),
     reinforcements: reinforcements.map(withAmountAfter),
+    damagedBuildings: damagedBuildings.map(
+      ({ buildingId, level, levelAfter }) => ({
+        buildingId,
+        levelBefore: level,
+        levelAfter,
+      }),
+    ),
   });
 
-  return { loot, survivingTroops };
+  return { loot, survivingTroops, damagedBuildings };
 };
 
 // Every attacking scout scouts with this strength, regardless of tribe

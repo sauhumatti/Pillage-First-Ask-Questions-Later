@@ -13,6 +13,7 @@ import {
 } from '../http/events/scheduler/scheduler';
 import { createSchedulerDataSource } from '../http/events/scheduler/scheduler-data-source';
 import { matchRoute } from '../http/route-matcher';
+import { createTroopStarvationEvent } from '../utils/starvation';
 import { closeWorkerDatabase, openWorkerDatabase } from './database';
 import {
   postWorkerMessage,
@@ -53,6 +54,9 @@ globalThis.addEventListener('message', async (event: MessageEvent) => {
         }
 
         dbFacade = await openWorkerDatabase(serverSlug);
+
+        // Starvation is checked by a recurring event, which older game worlds don't have yet
+        createTroopStarvationEvent(dbFacade, Date.now());
 
         const dataSource = createSchedulerDataSource(dbFacade);
 

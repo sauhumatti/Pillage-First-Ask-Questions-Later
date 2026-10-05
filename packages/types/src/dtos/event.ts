@@ -187,6 +187,10 @@ export const createEventDtoSchema = z
       ...globalEventSchema,
     }),
     z.strictObject({
+      type: z.literal('troopStarvation'),
+      ...globalEventSchema,
+    }),
+    z.strictObject({
       type: z.literal('culturePointsCelebration'),
       ...villageEventSchema,
       celebrationType: culturePointsCelebrationTypeSchema,

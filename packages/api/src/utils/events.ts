@@ -79,6 +79,7 @@ import {
   isTradeRouteEvent,
   isTrapperCageProductionEvent,
   isTroopMovementEvent,
+  isTroopStarvationEvent,
   isTroopTrainingEvent,
   isUnitImprovementEvent,
   isUnitResearchEvent,
@@ -122,6 +123,7 @@ import {
   assessQueuedTroopCountByIdQuestCompletion,
   assessQueuedTroopCountQuestCompletion,
 } from './quests';
+import { TROOP_STARVATION_CHECK_INTERVAL } from './starvation';
 import {
   materializeWoundedTroopsAt,
   removeTroops,
@@ -1691,6 +1693,10 @@ export const getEventDuration = (
     })!;
 
     return calculateHealthRegenerationEventDuration(healthRegeneration, speed);
+  }
+
+  if (isTroopStarvationEvent(event)) {
+    return TROOP_STARVATION_CHECK_INTERVAL;
   }
 
   if (isLoyaltyIncreaseEvent(event)) {

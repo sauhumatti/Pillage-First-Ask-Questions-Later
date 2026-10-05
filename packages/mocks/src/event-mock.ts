@@ -174,6 +174,15 @@ export const createLoyaltyIncreaseEventMock = (
   });
 };
 
+export const createTroopStarvationEventMock = (
+  overrides: Partial<GameEvent<'troopStarvation'>> = {},
+): GameEvent<'troopStarvation'> => {
+  return createGameEventMock('troopStarvation', {
+    villageId: null,
+    ...overrides,
+  });
+};
+
 export const createUnitImprovementEventMock = (
   overrides: Partial<GameEvent<'unitImprovement'>> = {},
 ): GameEvent<'unitImprovement'> => {

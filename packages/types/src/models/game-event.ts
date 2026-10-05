@@ -165,6 +165,7 @@ export const gameEventTypeSchema = z.enum([
   'heroRevival',
   'heroHealthRegeneration',
   'loyaltyIncrease',
+  'troopStarvation',
   'culturePointsCelebration',
   'resourceTransfer',
   'tradeRoute',
@@ -194,6 +195,7 @@ export type GameEventTypeToEventArgsMap<T extends GameEventType> = {
   heroRevival: VillageGameEvent;
   heroHealthRegeneration: GlobalGameEvent;
   loyaltyIncrease: GlobalGameEvent;
+  troopStarvation: GlobalGameEvent;
   culturePointsCelebration: CulturePointsCelebrationEvent & VillageGameEvent;
   resourceTransfer: BaseMerchantMovementEvent & VillageGameEvent;
   tradeRoute: TradeRouteEvent & VillageGameEvent;

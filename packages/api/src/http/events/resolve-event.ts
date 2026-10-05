@@ -30,6 +30,7 @@ import {
   resourceTransferResolver,
   tradeRouteResolver,
 } from './resolvers/marketplace-resolvers';
+import { troopStarvationResolver } from './resolvers/starvation-resolvers';
 import { trapperCageProductionResolver } from './resolvers/trapper-resolvers';
 import {
   adventureMovementResolver,
@@ -65,6 +66,7 @@ const gameEventResolvers = {
   heroRevival: heroRevivalResolver,
   heroHealthRegeneration: heroHealthRegenerationResolver,
   loyaltyIncrease: loyaltyIncreaseResolver,
+  troopStarvation: troopStarvationResolver,
   culturePointsCelebration: culturePointsCelebrationResolver,
   unitResearch: unitResearchResolver,
   unitImprovement: unitImprovementResolver,

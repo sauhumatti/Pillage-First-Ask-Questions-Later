@@ -328,7 +328,7 @@ const selectVillageDefenceModifiers = (
   return { flatDefence, defenceMultiplier: buildingEffectValues.bonus };
 };
 
-const decreaseTroopWheatConsumption = (
+export const decreaseTroopWheatConsumption = (
   database: DbFacade,
   tileId: number,
   deadTroops: { unitId: UnitId; amount: number }[],

@@ -229,6 +229,13 @@ export const cachesToClearOnResolve: Handlers = {
   loyaltyIncrease: () => {
     return [[loyaltyCacheKey]];
   },
+  troopStarvation: ({ affectedVillageIds, affectedTileIds }) => {
+    return [
+      [currentVillageCacheKey],
+      ...getVillageUnitCountQueryKeys(affectedVillageIds),
+      ...affectedTileIds.map((tileId) => [villageTroopsCacheKey, tileId]),
+    ];
+  },
   gatherersHutGatheringTrip: ({ affectedVillageIds, affectedTileIds }) => {
     return [
       [currentVillageCacheKey],

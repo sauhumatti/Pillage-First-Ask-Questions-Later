@@ -136,6 +136,7 @@ import {
   getGatherersHutExpeditions,
   getOccupiableOasisInRange,
   getVillageBySlug,
+  getVillageCulturePoints,
   rearrangeBuildingFields,
 } from './controllers/village-controllers';
 import { getArtifactsAroundVillage } from './controllers/world-items-controllers';
@@ -222,6 +223,7 @@ export const apiRoutes = [
 
   // Villages
   createRoute(getVillageBySlug),
+  createRoute(getVillageCulturePoints),
   createRoute(getGatherersHutExpeditions),
   createRoute(getStationedTroopsByTile),
   createRoute(getVillageUnitCount),

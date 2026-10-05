@@ -5,6 +5,7 @@ import type { ITooltip as ReactTooltipProps } from 'react-tooltip';
 import type { BuildingField as BuildingFieldType } from '@pillage-first/types/models/building-field';
 import type { Route } from '@react-router/types/app/(game)/(village-slug)/(village)/+types/page';
 import { BuildingField } from 'app/(game)/(village-slug)/(village)/components/building-field';
+import { VillageScene } from 'app/(game)/(village-slug)/(village)/components/village-scene';
 import { VillageMapContext } from 'app/(game)/(village-slug)/(village)/providers/village-map-context';
 import { BuildingFieldTooltip } from 'app/(game)/(village-slug)/components/building-field-tooltip';
 import { useCurrentVillage } from 'app/(game)/(village-slug)/hooks/current-village/use-current-village';
@@ -117,6 +118,9 @@ const VillagePage = (props: Route.ComponentProps) => {
       <main className="flex flex-col items-center justify-center mx-auto px-safe lg:px-0 lg:mt-20 lg:mb-0 max-h-[calc(100dvh-12rem)] standalone:max-h-[calc(100dvh-15rem)] h-screen lg:h-auto lg:max-h-none overflow-x-hidden">
         <VillageMapContext value={villageMapContextValue}>
           <div className="relative aspect-16/10 scrollbar-hidden min-w-[460px] max-w-5xl w-full">
+            {isVillagePageOpen && (
+              <VillageScene wallField={buildingFieldById.get(40) ?? null} />
+            )}
             {buildingFieldIds.map((buildingFieldId) => (
               <BuildingField
                 buildingField={buildingFieldById.get(buildingFieldId) ?? null}

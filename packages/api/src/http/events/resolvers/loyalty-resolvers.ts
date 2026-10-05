@@ -39,7 +39,7 @@ export const loyaltyIncreaseResolver: Resolver<GameEvent<'loyaltyIncrease'>> = (
   database.exec({
     sql: `
       UPDATE loyalties
-      SET loyalty = loyalty + COALESCE(
+      SET loyalty = MIN(100, loyalty + COALESCE(
         (
           SELECT 1 + COALESCE(
             (
@@ -61,7 +61,7 @@ export const loyaltyIncreaseResolver: Resolver<GameEvent<'loyaltyIncrease'>> = (
             v.tile_id = loyalties.tile_id
         ),
         1
-      );
+      ));
     `,
   });
 

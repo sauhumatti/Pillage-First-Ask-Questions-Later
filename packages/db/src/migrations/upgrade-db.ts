@@ -207,6 +207,25 @@ export const upgradeDb = (
 
   ensureVillageParentColumn(database);
 
+  const ensureBattleReportLoyaltyColumns = (db: DbFacade): void => {
+    const battleReportColumns = db.selectValues({
+      sql: 'SELECT name FROM pragma_table_info("battle_reports");',
+      schema: z.string(),
+    });
+
+    if (!battleReportColumns.includes('loyalty_before')) {
+      db.execMulti({
+        sql: `
+          ALTER TABLE battle_reports ADD COLUMN loyalty_before INTEGER CHECK (loyalty_before BETWEEN 0 AND 100);
+          ALTER TABLE battle_reports ADD COLUMN loyalty_after INTEGER CHECK (loyalty_after BETWEEN 0 AND 100);
+          ALTER TABLE battle_reports ADD COLUMN is_village_conquered INTEGER NOT NULL DEFAULT 0 CHECK (is_village_conquered IN (0, 1));
+        `,
+      });
+    }
+  };
+
+  ensureBattleReportLoyaltyColumns(database);
+
   if (currentDatabaseVersion === targetDatabaseVersion) {
     return;
   }

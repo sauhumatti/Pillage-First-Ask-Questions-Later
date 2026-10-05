@@ -489,6 +489,24 @@ export const BattleParticipantTable = ({
               </div>
             </UnitTableContentRow>
           )}
+          {report.battle.outcome.loyaltyBefore !== null &&
+            report.battle.outcome.loyaltyAfter !== null && (
+              <UnitTableContentRow label={t('Loyalty')}>
+                <Text className="text-sm">
+                  {report.battle.outcome.isVillageConquered
+                    ? t(
+                        'Loyalty dropped from {{before}} to 0. The village was conquered!',
+                        {
+                          before: report.battle.outcome.loyaltyBefore,
+                        },
+                      )
+                    : t('Loyalty dropped from {{before}} to {{after}}', {
+                        before: report.battle.outcome.loyaltyBefore,
+                        after: report.battle.outcome.loyaltyAfter,
+                      })}
+                </Text>
+              </UnitTableContentRow>
+            )}
           <UnitTableLoot
             loot={loot}
             totalCarryCapacity={totalCarryCapacity}

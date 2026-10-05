@@ -274,6 +274,7 @@ export const selectBattleReportQuery = `
     b.item_id, b.item_amount,
     b.can_attacker_see_full_report,
     b.attacker_points, b.defender_points,
+    b.loyalty_before, b.loyalty_after, b.is_village_conquered,
     bp.id AS participant_id,
     bp.player_id AS participant_player_id,
     bp.tile_id AS participant_tile_id,

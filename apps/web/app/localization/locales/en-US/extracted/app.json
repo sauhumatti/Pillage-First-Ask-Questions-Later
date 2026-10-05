@@ -455,6 +455,8 @@
   "Loyalty": "Loyalty",
   "Loyalty automatically increases over time when a Residence exists in the village.": "Loyalty automatically increases over time when a Residence exists in the village.",
   "Loyalty determines how firmly a village belongs to your realm. Every village begins with 100% loyalty. When loyalty drops to 0%, the village will switch allegiance and become part of the attacker's realm.": "Loyalty determines how firmly a village belongs to your realm. Every village begins with 100% loyalty. When loyalty drops to 0%, the village will switch allegiance and become part of the attacker's realm.",
+  "Loyalty dropped from {{before}} to {{after}}": "Loyalty dropped from {{before}} to {{after}}",
+  "Loyalty dropped from {{before}} to 0. The village was conquered!": "Loyalty dropped from {{before}} to 0. The village was conquered!",
   "Main building level": "Main building level",
   "Map": "Map",
   "Map filters": "Map filters",

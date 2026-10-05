@@ -56,6 +56,9 @@ export const battleOutcomeSchema = z
     canAttackerSeeFullReport: z.boolean(),
     itemId: z.int().nullable(),
     itemAmount: z.int().positive().nullable(),
+    loyaltyBefore: z.int().nullable(),
+    loyaltyAfter: z.int().nullable(),
+    isVillageConquered: z.boolean(),
   })
   .refine(
     ({ itemId, itemAmount }) => (itemId === null) === (itemAmount === null),

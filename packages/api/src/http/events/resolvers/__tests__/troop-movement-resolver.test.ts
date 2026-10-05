@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { z } from 'zod';
 import { prepareTestDatabase } from '@pillage-first/db';
+import { PLAYER_ID } from '@pillage-first/game-assets/player';
 import {
   createGameEventMock,
   createTroopMovementAdventureEventMock,
@@ -20,6 +21,7 @@ import { resourcesSchema } from '@pillage-first/types/models/resource';
 import { unitIdSchema } from '@pillage-first/types/models/unit';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
 import { selectWheatProductionEffectIdQuery } from '../../../../queries/effect-queries';
+import { adjustLoyalty } from '../../../../utils/loyalty';
 import { removeTroops } from '../../../../utils/troops';
 import {
   baseEventRowSchema,
@@ -2601,5 +2603,190 @@ describe('siege', () => {
     expect(selectBuildingLevel(database, target.id, 'TOURNAMENT_SQUARE')).toBe(
       10,
     );
+  });
+});
+
+describe('conquest', () => {
+  const setUpTarget = (
+    database: DbFacade,
+    { keepResidence = false }: { keepResidence?: boolean } = {},
+  ) => {
+    const target = database.selectObject({
+      sql: 'SELECT id, tile_id FROM villages WHERE id != 1 LIMIT 1;',
+      schema: z.strictObject({ id: z.number(), tile_id: z.number() }),
+    })!;
+
+    database.exec({
+      sql: 'DELETE FROM troops WHERE tile_id = $tile_id;',
+      bind: { $tile_id: target.tile_id },
+    });
+
+    if (!keepResidence) {
+      database.exec({
+        sql: `
+          DELETE FROM building_fields
+          WHERE
+            village_id = $village_id
+            AND building_id = (SELECT id FROM building_ids WHERE building = 'RESIDENCE');
+        `,
+        bind: { $village_id: target.id },
+      });
+    }
+
+    return target;
+  };
+
+  const allowConquest = (database: DbFacade) => {
+    database.exec({ sql: 'UPDATE players SET culture_points = 1000000;' });
+    database.exec({
+      sql: `
+        INSERT INTO building_fields (village_id, field_id, building_id, level)
+        VALUES (1, 20, (SELECT id FROM building_ids WHERE building = 'RESIDENCE'), 10);
+      `,
+    });
+  };
+
+  const attackWithChief = (database: DbFacade, targetTileId: number) => {
+    const originTileId = getVillageTileId(database, 1);
+
+    attackMovementResolver(
+      database,
+      createTroopMovementAttackEventMock({
+        id: 40,
+        startsAt: 5_000,
+        duration: 500,
+        villageId: 1,
+        originTileId,
+        targetTileId,
+        troops: [
+          {
+            unitId: 'IMPERIAN',
+            amount: 2000,
+            tileId: originTileId,
+            sourceTileId: originTileId,
+          },
+          {
+            unitId: 'ROMAN_CHIEF',
+            amount: 1,
+            tileId: originTileId,
+            sourceTileId: originTileId,
+          },
+        ],
+      }),
+    );
+  };
+
+  const selectLoyalty = (database: DbFacade, tileId: number) =>
+    database.selectValue({
+      sql: 'SELECT loyalty FROM loyalties WHERE tile_id = $tile_id;',
+      bind: { $tile_id: tileId },
+      schema: z.number(),
+    }) ?? 100;
+
+  const selectReturningChiefs = (database: DbFacade) => {
+    const row = database.selectObject({
+      sql: "SELECT id, type, starts_at, duration, (starts_at + duration) AS resolves_at, meta, village_id FROM events WHERE type = 'troopMovementReturn' LIMIT 1;",
+      schema: baseEventRowSchema,
+    })!;
+    const event = mapEventRowToTypedEvent(
+      row,
+    ) as GameEvent<'troopMovementReturn'>;
+
+    return (
+      event.troops.find(({ unitId }) => unitId === 'ROMAN_CHIEF')?.amount ?? 0
+    );
+  };
+
+  const selectLatestBattleOutcome = (database: DbFacade) => {
+    const reportId = database.selectValue({
+      sql: `
+        SELECT r.id
+        FROM reports r JOIN report_type_ids rti ON rti.id = r.type_id
+        WHERE rti.report_type = 'battle'
+        ORDER BY r.id DESC
+        LIMIT 1;
+      `,
+      schema: z.number(),
+    })!;
+
+    const report = getReport(
+      database,
+      createControllerArgs<'/reports/:reportId'>({ path: { reportId } }),
+    )!;
+
+    if (report.type !== 'battle') {
+      throw new Error('Expected battle report');
+    }
+
+    return report.battle.outcome;
+  };
+
+  test('a winning senator lowers loyalty and returns home', async () => {
+    const database = await prepareTestDatabase();
+    const target = setUpTarget(database);
+    mockRandom([0]);
+
+    attackWithChief(database, target.tile_id);
+
+    expect(selectLoyalty(database, target.tile_id)).toBe(80);
+    expect(selectReturningChiefs(database)).toBe(1);
+    expect(selectLatestBattleOutcome(database)).toMatchObject({
+      loyaltyBefore: 100,
+      loyaltyAfter: 80,
+      isVillageConquered: false,
+    });
+  });
+
+  test('a standing residence protects loyalty', async () => {
+    const database = await prepareTestDatabase();
+    const target = setUpTarget(database, { keepResidence: true });
+
+    attackWithChief(database, target.tile_id);
+
+    expect(selectLoyalty(database, target.tile_id)).toBe(100);
+    expect(selectLatestBattleOutcome(database).loyaltyBefore).toBeNull();
+  });
+
+  test('a village at 0 loyalty is conquered and the senator stays', async () => {
+    const database = await prepareTestDatabase();
+    const target = setUpTarget(database);
+    allowConquest(database);
+    adjustLoyalty(database, target.tile_id, -90);
+
+    attackWithChief(database, target.tile_id);
+
+    const village = database.selectObject({
+      sql: 'SELECT player_id, parent_village_id FROM villages WHERE id = $id;',
+      bind: { $id: target.id },
+      schema: z.strictObject({
+        player_id: z.number(),
+        parent_village_id: z.number().nullable(),
+      }),
+    })!;
+
+    expect(village).toStrictEqual({
+      player_id: PLAYER_ID,
+      parent_village_id: 1,
+    });
+    expect(selectReturningChiefs(database)).toBe(0);
+    expect(selectLatestBattleOutcome(database).isVillageConquered).toBe(true);
+  });
+
+  test('without a free expansion slot the village stays at 0 loyalty', async () => {
+    const database = await prepareTestDatabase();
+    const target = setUpTarget(database);
+    adjustLoyalty(database, target.tile_id, -90);
+
+    attackWithChief(database, target.tile_id);
+
+    expect(selectLoyalty(database, target.tile_id)).toBe(0);
+    expect(
+      database.selectValue({
+        sql: 'SELECT player_id FROM villages WHERE id = $id;',
+        bind: { $id: target.id },
+        schema: z.number(),
+      }),
+    ).not.toBe(PLAYER_ID);
+    expect(selectReturningChiefs(database)).toBe(1);
   });
 });

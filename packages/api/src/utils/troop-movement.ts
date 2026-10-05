@@ -7,6 +7,7 @@ import {
   getWallDefenceAtLevel,
   getWallDurabilityByTribe,
 } from '@pillage-first/game-assets/utils/combat';
+import { rollChiefLoyaltyReduction } from '@pillage-first/game-assets/utils/loyalty';
 import {
   calculateLootableCarryCapacity,
   calculateTotalCarryCapacity,
@@ -56,10 +57,16 @@ import {
   selectUnitImprovementLevelsByPlayerIdsQuery,
   updateHeroHealthByPlayerIdQuery,
 } from '../queries/troop-movement-queries';
+import { canConquerVillage, conquerVillage } from './conquest';
 import {
   createHeroHealthRegenerationEventByVillageId,
   onHeroDeath,
 } from './hero';
+import {
+  adjustLoyalty,
+  createLoyaltyIncreaseEvent,
+  getLoyalty,
+} from './loyalty';
 import {
   type CreateNewBattleReport,
   insertBattleReport,
@@ -544,6 +551,101 @@ const resolveCatapultDamage = (
   return damagedBuildings;
 };
 
+const isChief = (unitId: UnitId): boolean => {
+  return (
+    unitId !== 'HERO' && getUnitDefinition(unitId).tier === 'administration'
+  );
+};
+
+type ResolveLoyaltyReductionArgs = {
+  attackingVillageId: number;
+  attackerPlayerId: number;
+  targetVillageId: number;
+  targetTileId: number;
+  survivingTroops: Troop[];
+  damagedBuildings: DamagedBuilding[];
+  timestamp: number;
+};
+
+// Surviving administrators lower the target's loyalty, unless it still has a residence.
+// At 0 loyalty the village is conquered, if the player can take another village.
+const resolveLoyaltyReduction = (
+  database: DbFacade,
+  {
+    attackingVillageId,
+    attackerPlayerId,
+    targetVillageId,
+    targetTileId,
+    survivingTroops,
+    damagedBuildings,
+    timestamp,
+  }: ResolveLoyaltyReductionArgs,
+) => {
+  const chiefs = survivingTroops.filter(({ unitId }) => isChief(unitId));
+
+  if (chiefs.length === 0) {
+    return null;
+  }
+
+  const targetOwnerId = database.selectValue({
+    sql: 'SELECT player_id FROM villages WHERE id = $village_id;',
+    bind: { $village_id: targetVillageId },
+    schema: z.number(),
+  });
+
+  if (targetOwnerId === attackerPlayerId) {
+    return null;
+  }
+
+  const levelAfterByFieldId = new Map(
+    damagedBuildings.map(({ fieldId, levelAfter }) => [fieldId, levelAfter]),
+  );
+
+  const hasStandingResidence = database
+    .selectObjects({
+      sql: selectBuildingFieldsForSiegeByVillageIdQuery,
+      bind: { $village_id: targetVillageId },
+      schema: z.strictObject({
+        fieldId: z.number(),
+        buildingId: buildingIdSchema,
+        level: z.number(),
+      }),
+    })
+    .some(
+      ({ fieldId, buildingId, level }) =>
+        buildingId === 'RESIDENCE' &&
+        (levelAfterByFieldId.get(fieldId) ?? level) > 0,
+    );
+
+  if (hasStandingResidence) {
+    return null;
+  }
+
+  let reduction = 0;
+
+  for (const { unitId, amount } of chiefs) {
+    for (let i = 0; i < amount; i++) {
+      reduction += rollChiefLoyaltyReduction(unitId);
+    }
+  }
+
+  const loyaltyBefore = getLoyalty(database, targetTileId);
+  const loyaltyAfter = Math.max(0, loyaltyBefore - reduction);
+
+  adjustLoyalty(database, targetTileId, loyaltyAfter - loyaltyBefore);
+  createLoyaltyIncreaseEvent(database, timestamp);
+
+  const isVillageConquered =
+    loyaltyAfter === 0 &&
+    canConquerVillage(database, attackingVillageId, timestamp);
+
+  if (isVillageConquered) {
+    conquerVillage(database, targetVillageId, attackingVillageId, timestamp);
+  }
+
+  return { loyaltyBefore, loyaltyAfter, isVillageConquered };
+};
+
 type ResolveOffensiveMovementReturn = {
   loot: ResourceBundle;
   survivingTroops: Troop[];
@@ -808,6 +910,49 @@ export const resolveOffensiveMovement = (
     crannyCapacity,
   );
 
+  // Counted before conquest, since administrators that settle in a conquered village survived the battle
+  const survivingAmountByUnitId = new Map<UnitId, number>();
+
+  for (const { unitId, amount } of survivingTroops) {
+    survivingAmountByUnitId.set(
+      unitId,
+      (survivingAmountByUnitId.get(unitId) ?? 0) + amount,
+    );
+  }
+
+  const conquest =
+    !isRaid && targetVillageId !== null && battle.hasAttackerWon
+      ? resolveLoyaltyReduction(database, {
+          attackingVillageId: villageId,
+          attackerPlayerId,
+          targetVillageId,
+          targetTileId,
+          survivingTroops,
+          damagedBuildings,
+          timestamp: resolvesAt,
+        })
+      : null;
+
+  if (conquest?.isVillageConquered) {
+    // Administrators stay in the conquered village and are used up
+    const consumedChiefs = survivingTroops.filter(({ unitId }) =>
+      isChief(unitId),
+    );
+
+    decreaseTroopWheatConsumption(
+      database,
+      originTileId,
+      consumedChiefs,
+      resolvesAt,
+    );
+
+    survivingTroops.splice(
+      0,
+      survivingTroops.length,
+      ...survivingTroops.filter(({ unitId }) => !isChief(unitId)),
+    );
+  }
+
   const withAmountAfter = (participant: BattleReportParticipant) => ({
     ...participant,
     units: participant.units.map((unit) => ({
@@ -817,15 +962,6 @@ export const resolveOffensiveMovement = (
         unit.amountBefore,
     })),
   });
-
-  const survivingAmountByUnitId = new Map<UnitId, number>();
-
-  for (const { unitId, amount } of survivingTroops) {
-    survivingAmountByUnitId.set(
-      unitId,
-      (survivingAmountByUnitId.get(unitId) ?? 0) + amount,
-    );
-  }
 
   const attackerUnits = mapTroopsToBattleReportUnits(troops).map((unit) => ({
     ...unit,
@@ -856,6 +992,9 @@ export const resolveOffensiveMovement = (
         levelAfter,
       }),
     ),
+    loyaltyBefore: conquest?.loyaltyBefore ?? null,
+    loyaltyAfter: conquest?.loyaltyAfter ?? null,
+    isVillageConquered: conquest?.isVillageConquered ?? false,
   });
 
   return { loot, survivingTroops, damagedBuildings };

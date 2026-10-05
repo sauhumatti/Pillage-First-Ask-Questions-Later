@@ -175,6 +175,9 @@ export type CreateNewBattleReport = Pick<
     defender: CreateNewBattleReportParticipant;
     reinforcements?: CreateNewBattleReportParticipant[];
     damagedBuildings?: CreateNewBattleReportDamagedBuilding[];
+    loyaltyBefore?: number | null;
+    loyaltyAfter?: number | null;
+    isVillageConquered?: boolean;
   };
 
 export const insertReport = (
@@ -629,7 +632,10 @@ export const insertBattleReport = (
         item_amount,
         can_attacker_see_full_report,
         attacker_points,
-        defender_points
+        defender_points,
+        loyalty_before,
+        loyalty_after,
+        is_village_conquered
       )
       VALUES (
         $report_id,
@@ -644,7 +650,10 @@ export const insertBattleReport = (
         $item_amount,
         $can_attacker_see_full_report,
         $attacker_points,
-        $defender_points
+        $defender_points,
+        $loyalty_before,
+        $loyalty_after,
+        $is_village_conquered
       )
       RETURNING id;
     `,
@@ -662,6 +671,9 @@ export const insertBattleReport = (
       $can_attacker_see_full_report: report.canAttackerSeeFullReport ? 1 : 0,
       $attacker_points: report.attackerPoints,
       $defender_points: report.defenderPoints,
+      $loyalty_before: report.loyaltyBefore ?? null,
+      $loyalty_after: report.loyaltyAfter ?? null,
+      $is_village_conquered: report.isVillageConquered ? 1 : 0,
     },
     schema: z.int(),
   })!;

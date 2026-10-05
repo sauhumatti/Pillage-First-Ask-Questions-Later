@@ -5,6 +5,7 @@ import {
   type CulturePointsCelebrationType,
   calculateCulturePointsForBuildingField,
   calculateCulturePointsRequirementForVillageCount,
+  calculateExpansionSlotsForResidenceLevel,
 } from '@pillage-first/game-assets/utils/culture-points';
 import { buildingIdSchema } from '@pillage-first/types/models/building';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
@@ -199,5 +200,44 @@ export const getPlayerCulturePointsRequirementContext = (
         villageCount + 1,
         culturePointsRequirementSpeed,
       ),
+  };
+};
+
+export const getVillageExpansionSlots = (
+  database: DbFacade,
+  villageId: number,
+) => {
+  const { residenceLevel, usedExpansionSlots } = database.selectObject({
+    sql: `
+      SELECT
+        COALESCE(
+          (
+            SELECT MAX(bf.level)
+            FROM
+              building_fields bf
+              JOIN building_ids bi ON bi.id = bf.building_id
+            WHERE
+              bf.village_id = $village_id
+              AND bi.building = 'RESIDENCE'
+          ),
+          0
+        ) AS residenceLevel,
+        (
+          SELECT COUNT(*)
+          FROM villages
+          WHERE parent_village_id = $village_id
+        ) AS usedExpansionSlots;
+    `,
+    bind: { $village_id: villageId },
+    schema: z.strictObject({
+      residenceLevel: z.number(),
+      usedExpansionSlots: z.number(),
+    }),
+  })!;
+
+  return {
+    totalExpansionSlots:
+      calculateExpansionSlotsForResidenceLevel(residenceLevel),
+    usedExpansionSlots,
   };
 };

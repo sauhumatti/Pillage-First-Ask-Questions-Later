@@ -209,6 +209,7 @@ export const findNewVillageMovementResolver: Resolver<
       $name: 'New village',
       $tile_id: tileId,
       $player_id: PLAYER_ID,
+      $parent_village_id: villageId,
     },
     schema: z.number(),
   })!;

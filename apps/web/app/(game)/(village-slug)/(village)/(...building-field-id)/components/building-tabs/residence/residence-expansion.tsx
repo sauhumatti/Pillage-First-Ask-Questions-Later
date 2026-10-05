@@ -79,6 +79,15 @@ export const ResidenceExpansion = () => {
                   )}
                 </TableCell>
               </TableRow>
+              <TableRow>
+                <TableCell>{t('Expansion slots used')}</TableCell>
+                <TableCell>
+                  {t('{{used}} of {{total}}', {
+                    used: formatNumber(culturePoints.usedExpansionSlots),
+                    total: formatNumber(culturePoints.totalExpansionSlots),
+                  })}
+                </TableCell>
+              </TableRow>
             </TableBody>
           </Table>
         </OverflowContainer>

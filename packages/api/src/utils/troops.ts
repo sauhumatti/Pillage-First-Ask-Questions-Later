@@ -17,6 +17,7 @@ import {
 } from '@pillage-first/utils/guards/event';
 import {
   getPlayerCulturePointsRequirementContext,
+  getVillageExpansionSlots,
   updatePlayerCulturePointsAt,
 } from './culture-points';
 
@@ -537,6 +538,15 @@ export const validateTroopMovement = (
       if (culturePoints < nextVillageCulturePointsRequirement) {
         errors.push(
           `Not enough culture points. ${nextVillageCulturePointsRequirement} culture points are required to found the next village.`,
+        );
+      }
+
+      const { totalExpansionSlots, usedExpansionSlots } =
+        getVillageExpansionSlots(database, villageId);
+
+      if (usedExpansionSlots >= totalExpansionSlots) {
+        errors.push(
+          'No free expansion slot. Upgrade the residence to level 10 or 20 to unlock more.',
         );
       }
     }

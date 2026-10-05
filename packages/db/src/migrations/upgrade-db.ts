@@ -189,6 +189,24 @@ export const upgradeDb = (
 
   ensureCulturePointsColumns(database);
 
+  const ensureVillageParentColumn = (db: DbFacade): void => {
+    const villageColumns = db.selectValues({
+      sql: 'SELECT name FROM pragma_table_info("villages");',
+      schema: z.string(),
+    });
+
+    if (!villageColumns.includes('parent_village_id')) {
+      db.exec({
+        sql: `
+          ALTER TABLE villages
+          ADD COLUMN parent_village_id INTEGER DEFAULT NULL REFERENCES villages (id) ON DELETE SET NULL;
+        `,
+      });
+    }
+  };
+
+  ensureVillageParentColumn(database);
+
   if (currentDatabaseVersion === targetDatabaseVersion) {
     return;
   }

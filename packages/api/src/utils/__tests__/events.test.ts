@@ -50,6 +50,7 @@ import {
   runEventCreationSideEffects,
   validateEventCreationPrerequisites,
 } from '../events';
+import { validateTroopMovement } from '../troops';
 
 const getAnyVillageId = (database: DbFacade): number => {
   return database.selectValue({
@@ -2883,5 +2884,92 @@ describe('events utils', () => {
 
       vi.useRealTimers();
     });
+  });
+});
+
+describe('expansion slots', () => {
+  const NO_FREE_SLOT_ERROR =
+    'No free expansion slot. Upgrade the residence to level 10 or 20 to unlock more.';
+
+  const findFreeTileId = (database: DbFacade) =>
+    database.selectValue({
+      sql: `
+        SELECT t.id
+        FROM tiles t
+          LEFT JOIN villages v ON v.tile_id = t.id
+          LEFT JOIN oasis o ON o.tile_id = t.id
+        WHERE v.id IS NULL AND o.id IS NULL
+        LIMIT 1;
+      `,
+      schema: z.number(),
+    })!;
+
+  const setResidenceLevel = (
+    database: DbFacade,
+    villageId: number,
+    level: number,
+  ) => {
+    // Empty building fields have no row
+    database.exec({
+      sql: `
+        INSERT INTO building_fields (village_id, field_id, building_id, level)
+        VALUES ($village_id, 20, (SELECT id FROM building_ids WHERE building = 'RESIDENCE'), $level);
+      `,
+      bind: { $village_id: villageId, $level: level },
+    });
+  };
+
+  const validateSettlers = (database: DbFacade, villageId: number) =>
+    validateTroopMovement(
+      database,
+      createTroopMovementFindNewVillageEventMock({
+        villageId,
+        targetTileId: findFreeTileId(database),
+        troops: [
+          { unitId: 'ROMAN_SETTLER', amount: 3, tileId: 1, sourceTileId: 1 },
+        ],
+      }),
+    );
+
+  test('a village without a level 10 residence has no expansion slot', async () => {
+    const database = await prepareTestDatabase();
+
+    setResidenceLevel(database, 1, 9);
+
+    expect(validateSettlers(database, 1)).toContain(NO_FREE_SLOT_ERROR);
+  });
+
+  test('a level 10 residence gives one expansion slot', async () => {
+    const database = await prepareTestDatabase();
+
+    setResidenceLevel(database, 1, 10);
+
+    expect(validateSettlers(database, 1)).not.toContain(NO_FREE_SLOT_ERROR);
+
+    database.exec({
+      sql: `
+        UPDATE villages
+        SET parent_village_id = 1
+        WHERE id = (SELECT id FROM villages WHERE id != 1 LIMIT 1);
+      `,
+    });
+
+    expect(validateSettlers(database, 1)).toContain(NO_FREE_SLOT_ERROR);
+  });
+
+  test('a level 20 residence gives a second expansion slot', async () => {
+    const database = await prepareTestDatabase();
+
+    setResidenceLevel(database, 1, 20);
+
+    database.exec({
+      sql: `
+        UPDATE villages
+        SET parent_village_id = 1
+        WHERE id = (SELECT id FROM villages WHERE id != 1 LIMIT 1);
+      `,
+    });
+
+    expect(validateSettlers(database, 1)).not.toContain(NO_FREE_SLOT_ERROR);
   });
 });

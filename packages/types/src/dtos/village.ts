@@ -28,4 +28,6 @@ export const villageCulturePointsDtoSchema = z.strictObject({
   playerCulturePointsProduction: z.number(),
   currentVillageCulturePointsRequirement: z.number(),
   nextVillageCulturePointsRequirement: z.number(),
+  totalExpansionSlots: z.number(),
+  usedExpansionSlots: z.number(),
 });

@@ -71,3 +71,18 @@ export const calculateCulturePointsRequirementForVillageCount = (
       CULTURE_POINTS_REQUIREMENT_GROWTH ** exponent,
   );
 };
+
+// A residence gives an expansion slot at levels 10 and 20
+export const calculateExpansionSlotsForResidenceLevel = (
+  residenceLevel: number,
+): number => {
+  if (residenceLevel >= 20) {
+    return 2;
+  }
+
+  if (residenceLevel >= 10) {
+    return 1;
+  }
+
+  return 0;
+};

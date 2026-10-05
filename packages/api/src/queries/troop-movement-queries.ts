@@ -150,7 +150,7 @@ export const insertVillageForPlayerQuery = `
       )
   INSERT
   INTO
-    villages (name, slug, tile_id, player_id)
+    villages (name, slug, tile_id, player_id, parent_village_id)
   SELECT
     $name,
     (
@@ -159,7 +159,8 @@ export const insertVillageForPlayerQuery = `
         next_slug
       ),
     $tile_id,
-    $player_id
+    $player_id,
+    $parent_village_id
       RETURNING id;
 `;
 

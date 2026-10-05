@@ -23,6 +23,7 @@ import {
   calculatePlayerCulturePointsProduction,
   calculateVillageCulturePointsProduction,
   getPlayerCulturePointsRequirementContext,
+  getVillageExpansionSlots,
   getVillagePlayerId,
   updatePlayerCulturePointsAt,
 } from '../../utils/culture-points';
@@ -146,6 +147,7 @@ export const getVillageCulturePoints = createController(
       playerId,
     ),
     ...getPlayerCulturePointsRequirementContext(database, playerId),
+    ...getVillageExpansionSlots(database, villageId),
   });
 });
 

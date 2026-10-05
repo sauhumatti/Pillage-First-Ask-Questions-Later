@@ -53,7 +53,7 @@ import {
   insertMovementReport,
   insertVillageFoundedReport,
 } from '../../../utils/report';
-import { resolveNoCombatOffensiveMovement } from '../../../utils/troop-movement';
+import { resolveOffensiveMovement } from '../../../utils/troop-movement';
 import { addTroops } from '../../../utils/troops';
 import {
   addResourceSiteResourcesAt,
@@ -475,7 +475,7 @@ export const reinforcementMovementResolver: Resolver<
 export const attackMovementResolver: Resolver<
   GameEvent<'troopMovementAttack'>
 > = (database, args) => {
-  const { villageId, resolvesAt, originTileId, targetTileId, troops } = args;
+  const { villageId, resolvesAt, originTileId, targetTileId } = args;
 
   let crannyCapacity = 0;
 
@@ -507,23 +507,25 @@ export const attackMovementResolver: Resolver<
     }
   }
 
-  const loot = resolveNoCombatOffensiveMovement(
+  const { loot, survivingTroops } = resolveOffensiveMovement(
     database,
     args,
     targetVillageId,
     crannyCapacity,
   );
 
-  createEvents<'troopMovementReturn'>(database, {
-    villageId,
-    troops,
-    targetTileId: originTileId,
-    originTileId: targetTileId,
-    startsAt: resolvesAt,
-    type: 'troopMovementReturn',
-    originalMovementType: 'troopMovementAttack',
-    loot,
-  });
+  if (survivingTroops.length > 0) {
+    createEvents<'troopMovementReturn'>(database, {
+      villageId,
+      troops: survivingTroops,
+      targetTileId: originTileId,
+      originTileId: targetTileId,
+      startsAt: resolvesAt,
+      type: 'troopMovementReturn',
+      originalMovementType: 'troopMovementAttack',
+      loot,
+    });
+  }
 
   const targetVillageIds = database.selectValues({
     sql: selectPlayerVillageIdByTileIdQuery,
@@ -541,7 +543,7 @@ export const raidMovementResolver: Resolver<GameEvent<'troopMovementRaid'>> = (
   database,
   args,
 ) => {
-  const { villageId, resolvesAt, troops, originTileId, targetTileId } = args;
+  const { villageId, resolvesAt, originTileId, targetTileId } = args;
 
   let crannyCapacity = 0;
 
@@ -573,23 +575,25 @@ export const raidMovementResolver: Resolver<GameEvent<'troopMovementRaid'>> = (
     }
   }
 
-  const loot = resolveNoCombatOffensiveMovement(
+  const { loot, survivingTroops } = resolveOffensiveMovement(
     database,
     args,
     targetVillageId,
     crannyCapacity,
   );
 
-  createEvents<'troopMovementReturn'>(database, {
-    villageId,
-    troops,
-    startsAt: resolvesAt,
-    targetTileId: originTileId,
-    originTileId: targetTileId,
-    type: 'troopMovementReturn',
-    originalMovementType: 'troopMovementRaid',
-    loot,
-  });
+  if (survivingTroops.length > 0) {
+    createEvents<'troopMovementReturn'>(database, {
+      villageId,
+      troops: survivingTroops,
+      startsAt: resolvesAt,
+      targetTileId: originTileId,
+      originTileId: targetTileId,
+      type: 'troopMovementReturn',
+      originalMovementType: 'troopMovementRaid',
+      loot,
+    });
+  }
 
   const targetVillageIds = database.selectValues({
     sql: selectPlayerVillageIdByTileIdQuery,

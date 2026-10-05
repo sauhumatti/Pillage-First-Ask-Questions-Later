@@ -1152,6 +1152,23 @@ describe(findNewVillageMovementResolver, () => {
   });
 });
 
+// These tests cover looting, so the target is left without defences to make sure no attacking troops die
+const removeTargetDefences = (database: DbFacade, targetTileId: number) => {
+  database.exec({
+    sql: 'DELETE FROM troops WHERE tile_id = $tile_id;',
+    bind: { $tile_id: targetTileId },
+  });
+  database.exec({
+    sql: `
+      DELETE FROM effects
+      WHERE
+        tile_id = $tile_id
+        AND effect_id IN (SELECT id FROM effect_ids WHERE effect IN ('infantryDefence', 'cavalryDefence'));
+    `,
+    bind: { $tile_id: targetTileId },
+  });
+};
+
 describe(attackMovementResolver, () => {
   test('should create a return event starting at the attack resolution time', async () => {
     const database = await prepareTestDatabase();
@@ -1169,6 +1186,7 @@ describe(attackMovementResolver, () => {
       targetTileId: getTileIdByCoordinates(database, { x: 0, y: 1 }),
     });
 
+    removeTargetDefences(database, mockEvent.targetTileId);
     attackMovementResolver(database, mockEvent);
 
     const returnEventRow = database.selectObject({
@@ -1237,6 +1255,7 @@ describe(attackMovementResolver, () => {
       ],
     });
 
+    removeTargetDefences(database, mockEvent.targetTileId);
     attackMovementResolver(database, mockEvent);
 
     const targetResources = database.selectObject({
@@ -1447,6 +1466,7 @@ describe(attackMovementResolver, () => {
       ],
     });
 
+    removeTargetDefences(database, mockEvent.targetTileId);
     attackMovementResolver(database, mockEvent);
 
     const targetResources = database.selectObject({
@@ -1518,6 +1538,7 @@ describe(raidMovementResolver, () => {
       targetTileId: getTileIdByCoordinates(database, { x: 0, y: 1 }),
     });
 
+    removeTargetDefences(database, mockEvent.targetTileId);
     raidMovementResolver(database, mockEvent);
 
     const returnEventRow = database.selectObject({
@@ -1594,6 +1615,7 @@ describe(raidMovementResolver, () => {
       ],
     });
 
+    removeTargetDefences(database, mockEvent.targetTileId);
     raidMovementResolver(database, mockEvent);
 
     const targetResources = database.selectObject({
@@ -1812,7 +1834,8 @@ describe(raidMovementResolver, () => {
       targetTileId: targetOasisTileId,
       troops: [
         {
-          unitId: 'LEGIONNAIRE',
+          // A lone unit with less than 83 attack always dies, so use a stronger unit with the same carry capacity
+          unitId: 'TWINSTEEL_THERION',
           amount: 1,
           tileId: originTileId,
           sourceTileId: originTileId,
@@ -1820,6 +1843,7 @@ describe(raidMovementResolver, () => {
       ],
     });
 
+    removeTargetDefences(database, mockEvent.targetTileId);
     raidMovementResolver(database, mockEvent);
 
     const targetResources = database.selectObject({
@@ -1935,7 +1959,8 @@ describe(raidMovementResolver, () => {
       targetTileId: targetOasisTileId,
       troops: [
         {
-          unitId: 'LEGIONNAIRE',
+          // A lone unit with less than 83 attack always dies, so use a stronger unit with the same carry capacity
+          unitId: 'TWINSTEEL_THERION',
           amount: 1,
           tileId: originTileId,
           sourceTileId: originTileId,
@@ -1943,6 +1968,7 @@ describe(raidMovementResolver, () => {
       ],
     });
 
+    removeTargetDefences(database, mockEvent.targetTileId);
     raidMovementResolver(database, mockEvent);
 
     const targetResources = database.selectObject({
@@ -1967,5 +1993,274 @@ describe(raidMovementResolver, () => {
     ) as GameEvent<'troopMovementReturn'>;
 
     expect(returnEvent.loot).toStrictEqual([13, 13, 12, 12]);
+  });
+});
+
+describe('offensive movement combat', () => {
+  const setUpTargetVillage = (
+    database: DbFacade,
+    defenders: { unitId: string; amount: number }[],
+  ) => {
+    const target = database.selectObject({
+      sql: 'SELECT id, tile_id FROM villages WHERE id != 1 LIMIT 1;',
+      schema: z.strictObject({ id: z.number(), tile_id: z.number() }),
+    })!;
+
+    removeTargetDefences(database, target.tile_id);
+
+    for (const { unitId, amount } of defenders) {
+      database.exec({
+        sql: `
+          INSERT INTO troops (unit_id, amount, tile_id, source_tile_id)
+          SELECT id, $amount, $tile_id, $tile_id FROM unit_ids WHERE unit = $unit_id;
+        `,
+        bind: { $unit_id: unitId, $amount: amount, $tile_id: target.tile_id },
+      });
+    }
+
+    return target;
+  };
+
+  const selectTroopAmount = (
+    database: DbFacade,
+    tileId: number,
+    unitId: string,
+  ) =>
+    database.selectValue({
+      sql: `
+        SELECT COALESCE(SUM(t.amount), 0)
+        FROM troops t JOIN unit_ids ui ON ui.id = t.unit_id
+        WHERE t.tile_id = $tile_id AND ui.unit = $unit_id;
+      `,
+      bind: { $tile_id: tileId, $unit_id: unitId },
+      schema: z.number(),
+    })!;
+
+  const selectTroopWheatConsumption = (database: DbFacade, tileId: number) =>
+    database.selectValue({
+      sql: `
+        SELECT e.value
+        FROM effects e JOIN effect_ids ei ON e.effect_id = ei.id
+        WHERE
+          e.tile_id = $tile_id
+          AND e.source_id = (SELECT id FROM effect_source_ids WHERE source = 'troops')
+          AND ei.effect = 'wheatProduction';
+      `,
+      bind: { $tile_id: tileId },
+      schema: z.number(),
+    })!;
+
+  const selectLatestBattleReport = (database: DbFacade) => {
+    const reportId = database.selectValue({
+      sql: `
+        SELECT r.id
+        FROM reports r JOIN report_type_ids rti ON rti.id = r.type_id
+        WHERE rti.report_type = 'battle'
+        ORDER BY r.id DESC
+        LIMIT 1;
+      `,
+      schema: z.number(),
+    })!;
+
+    const report = getReport(
+      database,
+      createControllerArgs<'/reports/:reportId'>({
+        path: { reportId },
+      }),
+    )!;
+
+    if (report.type !== 'battle') {
+      throw new Error('Expected battle report');
+    }
+
+    return report;
+  };
+
+  const selectReturnEvent = (database: DbFacade) => {
+    const row = database.selectObject({
+      sql: "SELECT id, type, starts_at, duration, (starts_at + duration) AS resolves_at, meta, village_id FROM events WHERE type = 'troopMovementReturn' LIMIT 1;",
+      schema: baseEventRowSchema,
+    });
+
+    return row
+      ? (mapEventRowToTypedEvent(row) as GameEvent<'troopMovementReturn'>)
+      : null;
+  };
+
+  test('attacker loses every unit against a stronger defence and nothing returns', async () => {
+    const database = await prepareTestDatabase();
+    const villageId = 1;
+    const originTileId = getVillageTileId(database, villageId);
+    const target = setUpTargetVillage(database, [
+      { unitId: 'PHALANX', amount: 100 },
+    ]);
+    const consumptionBefore = selectTroopWheatConsumption(
+      database,
+      originTileId,
+    );
+
+    attackMovementResolver(
+      database,
+      createTroopMovementAttackEventMock({
+        id: 10,
+        startsAt: 5_000,
+        duration: 500,
+        villageId,
+        originTileId,
+        targetTileId: target.tile_id,
+        troops: [
+          {
+            unitId: 'LEGIONNAIRE',
+            amount: 10,
+            tileId: originTileId,
+            sourceTileId: originTileId,
+          },
+        ],
+      }),
+    );
+
+    // 10 · 40 = 400 offence vs 100 · 40 + 10 = 4010 defence
+    expect(selectReturnEvent(database)).toBeNull();
+    // Defender loses (400 / 4010)^1.5 ≈ 3.15%
+    expect(selectTroopAmount(database, target.tile_id, 'PHALANX')).toBe(97);
+    expect(selectTroopWheatConsumption(database, originTileId)).toBe(
+      consumptionBefore - 10,
+    );
+
+    const report = selectLatestBattleReport(database);
+
+    expect(report.outcome).toBe('attackerFullLoss');
+    expect(report.battle.outcome.loot).toStrictEqual([0, 0, 0, 0]);
+    expect(report.battle.outcome.canAttackerSeeFullReport).toBe(false);
+    expect(report.battle.statistics.attacker.points).toBe(400);
+    expect(report.battle.statistics.defender.points).toBe(4010);
+    expect(report.battle.attacker.troops.units).toContainEqual(
+      expect.objectContaining({
+        unitId: 'LEGIONNAIRE',
+        amountBefore: 10,
+        amountAfter: 0,
+      }),
+    );
+    expect(report.battle.defender.troops.units).toContainEqual(
+      expect.objectContaining({
+        unitId: 'PHALANX',
+        amountBefore: 100,
+        amountAfter: 97,
+      }),
+    );
+  });
+
+  test('attacker wins a normal attack, wipes out the defence and survivors return', async () => {
+    const database = await prepareTestDatabase();
+    const villageId = 1;
+    const originTileId = getVillageTileId(database, villageId);
+    const target = setUpTargetVillage(database, [
+      { unitId: 'PHALANX', amount: 50 },
+    ]);
+
+    attackMovementResolver(
+      database,
+      createTroopMovementAttackEventMock({
+        id: 11,
+        startsAt: 5_000,
+        duration: 500,
+        villageId,
+        originTileId,
+        targetTileId: target.tile_id,
+        troops: [
+          {
+            unitId: 'LEGIONNAIRE',
+            amount: 100,
+            tileId: originTileId,
+            sourceTileId: originTileId,
+          },
+        ],
+      }),
+    );
+
+    // 4000 offence vs 50 · 40 + 10 = 2010 defence, attacker loses (2010 / 4000)^1.5 ≈ 35.6%
+    expect(selectTroopAmount(database, target.tile_id, 'PHALANX')).toBe(0);
+    expect(selectReturnEvent(database)!.troops).toStrictEqual([
+      {
+        unitId: 'LEGIONNAIRE',
+        amount: 64,
+        tileId: originTileId,
+        sourceTileId: originTileId,
+      },
+    ]);
+    expect(selectLatestBattleReport(database).outcome).toBe('attackerSomeLoss');
+  });
+
+  test('both sides keep part of their army in a raid', async () => {
+    const database = await prepareTestDatabase();
+    const villageId = 1;
+    const originTileId = getVillageTileId(database, villageId);
+    const target = setUpTargetVillage(database, [
+      { unitId: 'PHALANX', amount: 50 },
+    ]);
+
+    raidMovementResolver(
+      database,
+      createTroopMovementRaidEventMock({
+        id: 12,
+        startsAt: 5_000,
+        duration: 500,
+        villageId,
+        originTileId,
+        targetTileId: target.tile_id,
+        troops: [
+          {
+            unitId: 'LEGIONNAIRE',
+            amount: 100,
+            tileId: originTileId,
+            sourceTileId: originTileId,
+          },
+        ],
+      }),
+    );
+
+    // x ≈ 35.6%, attacker loses x / (1 + x) ≈ 26.3%, defender loses the remaining 73.7%
+    expect(selectTroopAmount(database, target.tile_id, 'PHALANX')).toBe(13);
+    expect(selectReturnEvent(database)!.troops[0]!.amount).toBe(74);
+  });
+
+  test('a lone hero loses health instead of dying outright', async () => {
+    const database = await prepareTestDatabase();
+    const villageId = 1;
+    const originTileId = getVillageTileId(database, villageId);
+    const target = setUpTargetVillage(database, [
+      { unitId: 'PHALANX', amount: 1 },
+    ]);
+
+    database.exec({ sql: 'UPDATE heroes SET health = 100;' });
+
+    raidMovementResolver(
+      database,
+      createTroopMovementRaidEventMock({
+        id: 13,
+        startsAt: 5_000,
+        duration: 500,
+        villageId,
+        originTileId,
+        targetTileId: target.tile_id,
+        troops: [
+          {
+            unitId: 'HERO',
+            amount: 1,
+            tileId: originTileId,
+            sourceTileId: originTileId,
+          },
+        ],
+      }),
+    );
+
+    const health = database.selectValue({
+      sql: 'SELECT health FROM heroes;',
+      schema: z.number(),
+    })!;
+
+    // 100 offence vs 40 + 10 = 50 defence, x = 0.5^1.5 ≈ 35.4%, raid loss ≈ 26.1%
+    expect(health).toBe(74);
+    expect(selectReturnEvent(database)!.troops[0]!.unitId).toBe('HERO');
   });
 });

@@ -254,3 +254,50 @@ export const selectRelocationTargetVillageIdByTileIdQuery = `
   WHERE
     t.id = $tile_id;
 `;
+
+export const selectCombatTroopsByTileIdQuery = `
+  SELECT
+    ui.unit AS unitId,
+    t.amount,
+    t.source_tile_id AS sourceTileId,
+    v.player_id AS playerId
+  FROM
+    troops t
+    JOIN unit_ids ui ON ui.id = t.unit_id
+    LEFT JOIN villages v ON v.tile_id = t.source_tile_id
+  WHERE
+    t.tile_id = $tile_id;
+`;
+
+export const selectUnitImprovementLevelsByPlayerIdsQuery = `
+  SELECT
+    ui.player_id AS playerId,
+    u.unit AS unitId,
+    ui.level
+  FROM
+    unit_improvements ui
+    JOIN unit_ids u ON u.id = ui.unit_id
+  WHERE
+    ui.player_id IN (SELECT value FROM json_each($player_ids))
+    AND ui.level > 0;
+`;
+
+export const selectHeroHealthByPlayerIdQuery = `
+  SELECT health
+  FROM heroes
+  WHERE player_id = $player_id;
+`;
+
+export const updateHeroHealthByPlayerIdQuery = `
+  UPDATE heroes
+  SET health = $health
+  WHERE player_id = $player_id;
+`;
+
+export const selectHasHeroHealthRegenerationEventQuery = `
+  SELECT EXISTS (
+    SELECT 1
+    FROM events
+    WHERE type = 'heroHealthRegeneration'
+  );
+`;

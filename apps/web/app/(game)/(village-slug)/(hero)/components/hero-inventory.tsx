@@ -91,7 +91,7 @@ const useHeroItemActions = () => {
     onError,
   });
 
-  const { mutate: useItem, isPending: isUsing } = useMutation<
+  const { mutate: consumeItem, isPending: isUsing } = useMutation<
     void,
     Error,
     { itemId: number; amount: number }
@@ -112,7 +112,7 @@ const useHeroItemActions = () => {
   return {
     equipItem,
     unequipItem,
-    useItem,
+    consumeItem,
     isPending: isEquipping || isUnequipping || isUsing,
   };
 };
@@ -121,7 +121,8 @@ export const HeroInventory = () => {
   const { t } = useTranslation();
   const { heroInventory } = useHeroInventory();
   const { heroLoadout } = useHeroLoadout();
-  const { equipItem, unequipItem, useItem, isPending } = useHeroItemActions();
+  const { equipItem, unequipItem, consumeItem, isPending } =
+    useHeroItemActions();
 
   return (
     <Section>
@@ -234,7 +235,9 @@ export const HeroInventory = () => {
                             size="sm"
                             variant="outline"
                             disabled={isPending}
-                            onClick={() => useItem({ itemId: id, amount: 1 })}
+                            onClick={() =>
+                              consumeItem({ itemId: id, amount: 1 })
+                            }
                           >
                             {t('Use')}
                           </Button>

@@ -2266,3 +2266,168 @@ describe('offensive movement combat', () => {
     expect(selectReturnEvent(database)!.troops[0]!.unitId).toBe('HERO');
   });
 });
+
+describe('scouting', () => {
+  const setUpTarget = (
+    database: DbFacade,
+    defenders: { unitId: string; amount: number }[],
+  ) => {
+    const target = database.selectObject({
+      sql: 'SELECT id, tile_id FROM villages WHERE id != 1 LIMIT 1;',
+      schema: z.strictObject({ id: z.number(), tile_id: z.number() }),
+    })!;
+
+    removeTargetDefences(database, target.tile_id);
+
+    for (const { unitId, amount } of defenders) {
+      database.exec({
+        sql: `
+          INSERT INTO troops (unit_id, amount, tile_id, source_tile_id)
+          SELECT id, $amount, $tile_id, $tile_id FROM unit_ids WHERE unit = $unit_id;
+        `,
+        bind: { $unit_id: unitId, $amount: amount, $tile_id: target.tile_id },
+      });
+    }
+
+    return target;
+  };
+
+  const selectLatestScoutingReport = (database: DbFacade) => {
+    const reportId = database.selectValue({
+      sql: `
+        SELECT r.id
+        FROM reports r JOIN report_type_ids rti ON rti.id = r.type_id
+        WHERE rti.report_type = 'scouting'
+        ORDER BY r.id DESC
+        LIMIT 1;
+      `,
+      schema: z.number(),
+    })!;
+
+    const report = getReport(
+      database,
+      createControllerArgs<'/reports/:reportId'>({ path: { reportId } }),
+    )!;
+
+    if (report.type !== 'scouting') {
+      throw new Error('Expected scouting report');
+    }
+
+    return report;
+  };
+
+  const selectReturnEvent = (database: DbFacade) => {
+    const row = database.selectObject({
+      sql: "SELECT id, type, starts_at, duration, (starts_at + duration) AS resolves_at, meta, village_id FROM events WHERE type = 'troopMovementReturn' LIMIT 1;",
+      schema: baseEventRowSchema,
+    });
+
+    return row
+      ? (mapEventRowToTypedEvent(row) as GameEvent<'troopMovementReturn'>)
+      : null;
+  };
+
+  const sendScouts = (
+    database: DbFacade,
+    targetTileId: number,
+    amount: number,
+    scoutingTarget: 'resources' | 'defensiveStructures',
+  ) => {
+    const originTileId = getVillageTileId(database, 1);
+
+    raidMovementResolver(
+      database,
+      createTroopMovementRaidEventMock({
+        id: 20,
+        startsAt: 5_000,
+        duration: 500,
+        villageId: 1,
+        originTileId,
+        targetTileId,
+        scoutingTarget,
+        troops: [
+          {
+            unitId: 'GAUL_SCOUT',
+            amount,
+            tileId: originTileId,
+            sourceTileId: originTileId,
+          },
+        ],
+      }),
+    );
+  };
+
+  test('scouts see resources and troops when nobody defends against them', async () => {
+    const database = await prepareTestDatabase();
+    const target = setUpTarget(database, [{ unitId: 'PHALANX', amount: 30 }]);
+
+    database.exec({
+      sql: `
+        UPDATE resource_sites
+        SET wood = 100, clay = 200, iron = 300, wheat = 400, updated_at = 5500
+        WHERE tile_id = $tile_id;
+      `,
+      bind: { $tile_id: target.tile_id },
+    });
+
+    sendScouts(database, target.tile_id, 5, 'resources');
+
+    const report = selectLatestScoutingReport(database);
+
+    expect(report.outcome).toBe('scoutAttackerNoLoss');
+    expect(report.scouting.successful).toBe(true);
+    expect(report.scouting.resources).toStrictEqual([100, 200, 300, 400]);
+    expect(report.scouting.defender.units).toStrictEqual([
+      { unitId: 'PHALANX', amount: 30 },
+    ]);
+    // Non-scout defenders don't fight scouts
+    expect(selectReturnEvent(database)!.troops[0]!.amount).toBe(5);
+    expect(selectReturnEvent(database)!.loot).toBeUndefined();
+  });
+
+  test('scouts report defensive structures', async () => {
+    const database = await prepareTestDatabase();
+    const target = setUpTarget(database, []);
+
+    database.exec({
+      sql: `
+        DELETE FROM building_fields
+        WHERE
+          village_id = $village_id
+          AND building_id = (SELECT id FROM building_ids WHERE building = 'RESIDENCE');
+      `,
+      bind: { $village_id: target.id },
+    });
+    database.exec({
+      sql: `
+        INSERT OR REPLACE INTO building_fields (village_id, field_id, building_id, level)
+        VALUES ($village_id, 25, (SELECT id FROM building_ids WHERE building = 'RESIDENCE'), 7);
+      `,
+      bind: { $village_id: target.id },
+    });
+
+    sendScouts(database, target.tile_id, 5, 'defensiveStructures');
+
+    expect(
+      selectLatestScoutingReport(database).scouting.defensiveStructures,
+    ).toContainEqual({ buildingId: 'RESIDENCE', level: 7 });
+  });
+
+  test('scouts die against a stronger scout defence and learn nothing', async () => {
+    const database = await prepareTestDatabase();
+    const target = setUpTarget(database, [
+      { unitId: 'ROMAN_SCOUT', amount: 100 },
+    ]);
+
+    sendScouts(database, target.tile_id, 5, 'resources');
+
+    const report = selectLatestScoutingReport(database);
+
+    // 5 · 35 = 175 vs 100 · 20 = 2000
+    expect(report.outcome).toBe('scoutAttackerFullLoss');
+    expect(report.scouting.successful).toBe(false);
+    expect(report.scouting.resources).toBeNull();
+    expect(report.scouting.defender.units).toStrictEqual([]);
+    expect(selectReturnEvent(database)).toBeNull();
+  });
+});

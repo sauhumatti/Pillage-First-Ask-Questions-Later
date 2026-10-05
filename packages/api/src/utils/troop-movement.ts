@@ -11,8 +11,16 @@ import {
   distributeLoot,
 } from '@pillage-first/game-assets/utils/troops';
 import { getUnitDefinition } from '@pillage-first/game-assets/utils/units';
+import {
+  type Building,
+  buildingIdSchema,
+} from '@pillage-first/types/models/building';
 import type { GameEvent } from '@pillage-first/types/models/game-event';
-import type { ResourceBundle } from '@pillage-first/types/models/resource';
+import type {
+  ResourceBundle,
+  Resources,
+} from '@pillage-first/types/models/resource';
+import { type Tribe, tribeSchema } from '@pillage-first/types/models/tribe';
 import type { Troop } from '@pillage-first/types/models/troop';
 import { type UnitId, unitIdSchema } from '@pillage-first/types/models/unit';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
@@ -31,9 +39,11 @@ import {
 import {
   selectBattleReportParticipantsByTargetTileIdQuery,
   selectCombatTroopsByTileIdQuery,
+  selectDefensiveStructuresByVillageIdQuery,
   selectHasHeroHealthRegenerationEventQuery,
   selectHeroCombatStatsByPlayerIdQuery,
   selectHeroHealthByPlayerIdQuery,
+  selectTribeByVillageTileIdQuery,
   selectUnitImprovementLevelsByPlayerIdsQuery,
   updateHeroHealthByPlayerIdQuery,
 } from '../queries/troop-movement-queries';
@@ -41,9 +51,14 @@ import {
   createHeroHealthRegenerationEventByVillageId,
   onHeroDeath,
 } from './hero';
-import { type CreateNewBattleReport, insertBattleReport } from './report';
+import {
+  type CreateNewBattleReport,
+  insertBattleReport,
+  insertScoutingReport,
+} from './report';
 import { removeTroops } from './troops';
 import {
+  calculateResourceSiteResourcesAt,
   getVillageTileId,
   subtractResourceSiteResourcesAt,
   updateResourceSiteResourcesAt,
@@ -620,4 +635,271 @@ export const resolveOffensiveMovement = (
   });
 
   return { loot, survivingTroops };
+};
+
+// Every attacking scout scouts with this strength, regardless of tribe
+const SCOUT_SCOUTING_STRENGTH = 35;
+
+export const isScoutingMovement = (
+  args: GameEvent<'troopMovementAttack'> | GameEvent<'troopMovementRaid'>,
+): boolean => {
+  return (
+    args.scoutingTarget !== undefined &&
+    args.troops.length > 0 &&
+    args.troops.every(
+      ({ unitId }) =>
+        unitId !== 'HERO' && getUnitDefinition(unitId).tier === 'scout',
+    )
+  );
+};
+
+const selectTribeByTileId = (database: DbFacade, tileId: number): Tribe => {
+  return (
+    database.selectValue({
+      sql: selectTribeByVillageTileIdQuery,
+      bind: { $tile_id: tileId },
+      schema: tribeSchema,
+    }) ?? 'nature'
+  );
+};
+
+const getScoutingOutcome = (
+  amountBefore: number,
+  amountLost: number,
+):
+  | 'scoutAttackerNoLoss'
+  | 'scoutAttackerSomeLoss'
+  | 'scoutAttackerFullLoss' => {
+  if (amountLost === 0) {
+    return 'scoutAttackerNoLoss';
+  }
+
+  if (amountLost >= amountBefore) {
+    return 'scoutAttackerFullLoss';
+  }
+
+  return 'scoutAttackerSomeLoss';
+};
+
+// Only scouts fight scouts. Attacking scouts that survive report the target's
+// troops, plus either its resources or its defensive structures.
+export const resolveScoutingMovement = (
+  database: DbFacade,
+  args: GameEvent<'troopMovementAttack'> | GameEvent<'troopMovementRaid'>,
+  targetVillageId: number | null,
+): { survivingTroops: Troop[] } => {
+  const { villageId, resolvesAt, originTileId, targetTileId, troops } = args;
+  const scoutingTarget = args.scoutingTarget!;
+
+  const stationedTroops = database.selectObjects({
+    sql: selectCombatTroopsByTileIdQuery,
+    bind: { $tile_id: targetTileId },
+    schema: z.strictObject({
+      unitId: unitIdSchema,
+      amount: z.number(),
+      sourceTileId: z.number(),
+      playerId: z.number().nullable(),
+    }),
+  }) satisfies StationedTroop[];
+
+  // Oasis animals don't fight scouts
+  const defendingScouts = stationedTroops.filter(({ unitId }) => {
+    if (unitId === 'HERO') {
+      return false;
+    }
+
+    const { tier, tribe } = getUnitDefinition(unitId);
+
+    return tier === 'scout' && tribe !== 'nature';
+  });
+
+  let attackerLossRatio = 0;
+  let defenderLossRatio = 0;
+
+  if (defendingScouts.length > 0) {
+    const smithyLevels = selectSmithyLevels(database, [
+      ...new Set(
+        defendingScouts.flatMap(({ playerId }) =>
+          playerId === null ? [] : [playerId],
+        ),
+      ),
+    ]);
+
+    const { defenceMultiplier } = selectVillageDefenceModifiers(
+      database,
+      targetVillageId,
+      targetTileId,
+    );
+
+    const battle = calculateBattle({
+      attackers: troops.map(({ amount }) => ({
+        attack: SCOUT_SCOUTING_STRENGTH,
+        infantryDefence: 0,
+        cavalryDefence: 0,
+        isCavalry: false,
+        amount,
+      })),
+      defenders: defendingScouts.map(({ unitId, amount, playerId }) =>
+        createCombatUnit(
+          unitId,
+          amount,
+          playerId === null
+            ? 0
+            : (smithyLevels.get(`${playerId}:${unitId}`) ?? 0),
+        ),
+      ),
+      // Scouting losses work like a raid, so both sides can survive
+      isRaid: true,
+      defenceMultiplier,
+    });
+
+    attackerLossRatio = battle.attackerLossRatio;
+    defenderLossRatio = battle.defenderLossRatio;
+  }
+
+  // Defending scout losses
+  const deadDefenders: Troop[] = [];
+
+  for (const { unitId, amount, sourceTileId } of defendingScouts) {
+    const losses = calculateUnitLosses(amount, defenderLossRatio);
+
+    if (losses > 0) {
+      deadDefenders.push({
+        unitId,
+        amount: losses,
+        tileId: targetTileId,
+        sourceTileId,
+      });
+    }
+  }
+
+  if (deadDefenders.length > 0) {
+    removeTroops(database, deadDefenders);
+
+    if (targetVillageId !== null) {
+      decreaseTroopWheatConsumption(
+        database,
+        targetTileId,
+        deadDefenders,
+        resolvesAt,
+      );
+    }
+  }
+
+  // Attacking scout losses
+  const survivingTroops: Troop[] = [];
+  const deadAttackers: { unitId: UnitId; amount: number }[] = [];
+  let amountBefore = 0;
+  let amountLost = 0;
+
+  for (const troop of troops) {
+    const losses = calculateUnitLosses(troop.amount, attackerLossRatio);
+
+    amountBefore += troop.amount;
+    amountLost += losses;
+
+    if (losses > 0) {
+      deadAttackers.push({ unitId: troop.unitId, amount: losses });
+    }
+
+    if (troop.amount - losses > 0) {
+      survivingTroops.push({ ...troop, amount: troop.amount - losses });
+    }
+  }
+
+  const survivingAmountByUnitId = new Map<UnitId, number>();
+
+  for (const { unitId, amount } of survivingTroops) {
+    survivingAmountByUnitId.set(
+      unitId,
+      (survivingAmountByUnitId.get(unitId) ?? 0) + amount,
+    );
+  }
+
+  const attackerUnits = mapTroopsToBattleReportUnits(troops).map((unit) => ({
+    ...unit,
+    amountAfter: survivingAmountByUnitId.get(unit.unitId) ?? 0,
+  }));
+
+  decreaseTroopWheatConsumption(
+    database,
+    originTileId,
+    deadAttackers,
+    resolvesAt,
+  );
+
+  const successful = survivingTroops.length > 0;
+
+  // The report shows what the target had before the scouting fight
+  const defenderUnits = new Map<number, { unitId: UnitId; amount: number }[]>();
+
+  for (const { unitId, amount, sourceTileId } of stationedTroops) {
+    const units = defenderUnits.get(sourceTileId) ?? [];
+    units.push({ unitId, amount });
+    defenderUnits.set(sourceTileId, units);
+  }
+
+  let resources: Resources | undefined;
+  let defensiveStructures:
+    | { buildingId: Building['id']; level: number }[]
+    | undefined;
+
+  if (successful && scoutingTarget === 'resources') {
+    const { currentWood, currentClay, currentIron, currentWheat } =
+      calculateResourceSiteResourcesAt(database, targetTileId, resolvesAt);
+
+    resources = {
+      wood: Math.floor(currentWood),
+      clay: Math.floor(currentClay),
+      iron: Math.floor(currentIron),
+      wheat: Math.floor(currentWheat),
+    };
+  }
+
+  if (
+    successful &&
+    scoutingTarget === 'defensiveStructures' &&
+    targetVillageId !== null
+  ) {
+    defensiveStructures = database.selectObjects({
+      sql: selectDefensiveStructuresByVillageIdQuery,
+      bind: { $village_id: targetVillageId },
+      schema: z.strictObject({
+        buildingId: buildingIdSchema,
+        level: z.number(),
+      }),
+    });
+  }
+
+  insertScoutingReport(database, {
+    villageId,
+    timestamp: resolvesAt,
+    outcome: getScoutingOutcome(amountBefore, amountLost),
+    originTileId,
+    targetTileId,
+    perspective: 'attacker',
+    successful,
+    target: scoutingTarget,
+    attacker: {
+      tribe: selectTribeByTileId(database, originTileId),
+      units: attackerUnits,
+    },
+    defender: {
+      tribe: selectTribeByTileId(database, targetTileId),
+      units: successful ? (defenderUnits.get(targetTileId) ?? []) : [],
+      reinforcements: successful
+        ? [...defenderUnits.entries()]
+            .filter(([tileId]) => tileId !== targetTileId)
+            .map(([tileId, units]) => ({
+              tileId,
+              tribe: selectTribeByTileId(database, tileId),
+              units,
+            }))
+        : [],
+    },
+    resources,
+    defensiveStructures,
+  });
+
+  return { survivingTroops };
 };

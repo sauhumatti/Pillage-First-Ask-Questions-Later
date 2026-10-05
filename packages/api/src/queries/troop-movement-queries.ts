@@ -316,3 +316,25 @@ export const selectHeroCombatStatsByPlayerIdQuery = `
   FROM heroes h
   WHERE h.player_id = $player_id;
 `;
+
+export const selectTribeByVillageTileIdQuery = `
+  SELECT ti.tribe
+  FROM
+    villages v
+    JOIN players p ON p.id = v.player_id
+    JOIN tribe_ids ti ON ti.id = p.tribe_id
+  WHERE v.tile_id = $tile_id;
+`;
+
+export const selectDefensiveStructuresByVillageIdQuery = `
+  SELECT
+    bi.building AS buildingId,
+    MAX(bf.level) AS level
+  FROM
+    building_fields bf
+    JOIN building_ids bi ON bi.id = bf.building_id
+  WHERE
+    bf.village_id = $village_id
+    AND (bi.building LIKE '%_WALL' OR bi.building IN ('RESIDENCE', 'CRANNY'))
+  GROUP BY bi.building;
+`;

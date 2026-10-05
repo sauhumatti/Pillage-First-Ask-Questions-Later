@@ -53,7 +53,11 @@ import {
   insertMovementReport,
   insertVillageFoundedReport,
 } from '../../../utils/report';
-import { resolveOffensiveMovement } from '../../../utils/troop-movement';
+import {
+  isScoutingMovement,
+  resolveOffensiveMovement,
+  resolveScoutingMovement,
+} from '../../../utils/troop-movement';
 import { addTroops } from '../../../utils/troops';
 import {
   addResourceSiteResourcesAt,
@@ -508,12 +512,12 @@ export const attackMovementResolver: Resolver<
     }
   }
 
-  const { loot, survivingTroops } = resolveOffensiveMovement(
-    database,
-    args,
-    targetVillageId,
-    crannyCapacity,
-  );
+  const { loot, survivingTroops } = isScoutingMovement(args)
+    ? {
+        loot: undefined,
+        ...resolveScoutingMovement(database, args, targetVillageId),
+      }
+    : resolveOffensiveMovement(database, args, targetVillageId, crannyCapacity);
 
   if (survivingTroops.length > 0) {
     createEvents<'troopMovementReturn'>(database, {
@@ -576,12 +580,12 @@ export const raidMovementResolver: Resolver<GameEvent<'troopMovementRaid'>> = (
     }
   }
 
-  const { loot, survivingTroops } = resolveOffensiveMovement(
-    database,
-    args,
-    targetVillageId,
-    crannyCapacity,
-  );
+  const { loot, survivingTroops } = isScoutingMovement(args)
+    ? {
+        loot: undefined,
+        ...resolveScoutingMovement(database, args, targetVillageId),
+      }
+    : resolveOffensiveMovement(database, args, targetVillageId, crannyCapacity);
 
   if (survivingTroops.length > 0) {
     createEvents<'troopMovementReturn'>(database, {

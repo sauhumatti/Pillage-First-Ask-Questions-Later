@@ -133,7 +133,7 @@ const GatherersHutGatheringTripMovement = () => {
   );
 };
 
-const partitionTroopMovementEvents = (
+export const partitionTroopMovementEvents = (
   events: ReturnType<typeof useVillageTroopMovements>['troopMovements'],
   currentVillageId: number,
 ) => {

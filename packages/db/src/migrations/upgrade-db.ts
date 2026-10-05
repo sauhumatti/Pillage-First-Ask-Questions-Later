@@ -137,7 +137,7 @@ export const upgradeDb = (
   const ensureCulturePointsColumns = (db: DbFacade): void => {
     db.transaction((tx) => {
       const serverColumns = tx.selectValues({
-        sql: 'SELECT name FROM pragma_table_info("servers");',
+        sql: "SELECT name FROM pragma_table_info('servers');",
         schema: z.string(),
       });
 
@@ -151,7 +151,7 @@ export const upgradeDb = (
       }
 
       const playerColumns = tx.selectValues({
-        sql: 'SELECT name FROM pragma_table_info("players");',
+        sql: "SELECT name FROM pragma_table_info('players');",
         schema: z.string(),
       });
 
@@ -191,7 +191,7 @@ export const upgradeDb = (
 
   const ensureVillageParentColumn = (db: DbFacade): void => {
     const villageColumns = db.selectValues({
-      sql: 'SELECT name FROM pragma_table_info("villages");',
+      sql: "SELECT name FROM pragma_table_info('villages');",
       schema: z.string(),
     });
 
@@ -209,7 +209,7 @@ export const upgradeDb = (
 
   const ensureBattleReportLoyaltyColumns = (db: DbFacade): void => {
     const battleReportColumns = db.selectValues({
-      sql: 'SELECT name FROM pragma_table_info("battle_reports");',
+      sql: "SELECT name FROM pragma_table_info('battle_reports');",
       schema: z.string(),
     });
 

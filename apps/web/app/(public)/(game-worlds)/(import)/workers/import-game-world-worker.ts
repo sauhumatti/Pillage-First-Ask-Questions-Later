@@ -68,7 +68,7 @@ globalThis.addEventListener(
       });
 
       const serverColumns = database
-        .selectObjects('SELECT name FROM pragma_table_info("servers");')
+        .selectObjects("SELECT name FROM pragma_table_info('servers');")
         .map(({ name }) => name);
 
       if (!serverColumns.includes('culture_points_requirement_speed')) {

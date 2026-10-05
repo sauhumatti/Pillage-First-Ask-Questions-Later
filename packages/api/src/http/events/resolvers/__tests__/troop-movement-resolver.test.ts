@@ -2790,3 +2790,88 @@ describe('conquest', () => {
     expect(selectReturningChiefs(database)).toBe(1);
   });
 });
+
+describe('hospital', () => {
+  const attackStrongDefence = async ({
+    hasHospital,
+  }: {
+    hasHospital: boolean;
+  }) => {
+    const database = await prepareTestDatabase();
+    const originTileId = getVillageTileId(database, 1);
+    const target = database.selectObject({
+      sql: 'SELECT id, tile_id FROM villages WHERE id != 1 LIMIT 1;',
+      schema: z.strictObject({ id: z.number(), tile_id: z.number() }),
+    })!;
+
+    database.exec({
+      sql: `
+        INSERT INTO troops (unit_id, amount, tile_id, source_tile_id)
+        SELECT id, 1000, $tile_id, $tile_id FROM unit_ids WHERE unit = 'PHALANX'
+        ON CONFLICT (unit_id, tile_id, source_tile_id) DO UPDATE SET amount = 1000;
+      `,
+      bind: { $tile_id: target.tile_id },
+    });
+
+    database.exec({ sql: 'DELETE FROM wounded_troops;' });
+
+    if (hasHospital) {
+      database.exec({
+        sql: `
+          INSERT INTO building_fields (village_id, field_id, building_id, level)
+          VALUES (1, 21, (SELECT id FROM building_ids WHERE building = 'HOSPITAL'), 1);
+        `,
+      });
+    }
+
+    attackMovementResolver(
+      database,
+      createTroopMovementAttackEventMock({
+        id: 50,
+        startsAt: 5_000,
+        duration: 500,
+        villageId: 1,
+        originTileId,
+        targetTileId: target.tile_id,
+        troops: [
+          {
+            unitId: 'LEGIONNAIRE',
+            amount: 10,
+            tileId: originTileId,
+            sourceTileId: originTileId,
+          },
+          {
+            unitId: 'ROMAN_RAM',
+            amount: 5,
+            tileId: originTileId,
+            sourceTileId: originTileId,
+          },
+        ],
+      }),
+    );
+
+    const wounded = database.selectObjects({
+      sql: `
+        SELECT ui.unit AS unitId, wt.amount
+        FROM wounded_troops wt JOIN unit_ids ui ON ui.id = wt.unit_id
+        WHERE wt.village_id = 1;
+      `,
+      schema: z.strictObject({ unitId: z.string(), amount: z.number() }),
+    });
+
+    return { wounded };
+  };
+
+  test('40% of killed infantry and cavalry are wounded when the home village has a hospital', async () => {
+    const { wounded } = await attackStrongDefence({ hasHospital: true });
+
+    // Rams are siege units and never wounded
+    expect(wounded).toStrictEqual([{ unitId: 'LEGIONNAIRE', amount: 4 }]);
+  });
+
+  test('without a hospital every killed unit dies', async () => {
+    const { wounded } = await attackStrongDefence({ hasHospital: false });
+
+    expect(wounded).toStrictEqual([]);
+  });
+});

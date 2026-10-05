@@ -1,5 +1,7 @@
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
+import { Link, useLocation } from 'react-router';
+import { PageMetadata } from 'app/(public)/components/page-metadata';
+import { PageContents } from 'app/components/page-contents';
 import { Text } from 'app/components/text';
 import {
   Breadcrumb,
@@ -12,12 +14,17 @@ import { Button } from 'app/components/ui/button';
 
 const NotFoundPage = () => {
   const { t } = useTranslation('public');
+  const { pathname } = useLocation();
 
   const title = t('{{title}} | Pillage First!', { title: 'Page not found' });
 
   return (
-    <>
-      <title>{title}</title>
+    <PageContents>
+      <PageMetadata
+        title={title}
+        description="The requested Pillage First! page could not be found. Return home, create a new game world or continue one of your saved worlds."
+        pathname={pathname}
+      />
       <div className="flex flex-col gap-4 max-w-3xl px-2 lg:px-0 mx-auto">
         <Breadcrumb>
           <BreadcrumbList>
@@ -54,7 +61,7 @@ const NotFoundPage = () => {
           </div>
         </main>
       </div>
-    </>
+    </PageContents>
   );
 };
 

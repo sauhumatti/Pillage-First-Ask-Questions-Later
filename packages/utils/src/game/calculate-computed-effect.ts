@@ -1,9 +1,10 @@
-import type {
-  Effect,
-  VillageBuildingEffect,
-  VillageEffect,
-} from '@pillage-first/types/models/effect';
-import type { Village } from '@pillage-first/types/models/village';
+import type { Effect, VillageEffect } from '@pillage-first/types/models/effect';
+import type { Tile } from '@pillage-first/types/models/tile';
+import {
+  isAdditiveBonusEffect,
+  isMultiplicativeBonusEffect,
+  isResourceProductionEffectId,
+} from '../guards/effect-guards';
 
 const assignEffectValue = (
   effect: Effect,
@@ -15,7 +16,14 @@ const assignEffectValue = (
       break;
     }
     case 'bonus': {
-      effectValuesRef.bonus *= effect.value;
+      if (isAdditiveBonusEffect(effect)) {
+        effectValuesRef.bonus += effect.value - 1;
+        break;
+      }
+
+      if (isMultiplicativeBonusEffect(effect)) {
+        effectValuesRef.bonus *= effect.value;
+      }
       break;
     }
     case 'bonus-booster': {
@@ -31,6 +39,40 @@ type EffectValueBreakdown = {
   bonusBooster: number;
 };
 
+const truncateBonusValue = (value: number): number => {
+  return Math.trunc(value + 1e-9);
+};
+
+const getBoostedBonusEffectValue = ({
+  bonus,
+  bonusBooster,
+}: EffectValueBreakdown): number => {
+  return 1 + (bonus - 1) * bonusBooster;
+};
+
+const combineBonusEffectValues = (
+  effectId: Effect['id'],
+  effectValues: EffectValueBreakdown[],
+): number => {
+  if (isResourceProductionEffectId(effectId)) {
+    let totalDelta = 0;
+
+    for (const effectValue of effectValues) {
+      totalDelta += getBoostedBonusEffectValue(effectValue) - 1;
+    }
+
+    return 1 + totalDelta;
+  }
+
+  let total = 1;
+
+  for (const effectValue of effectValues) {
+    total *= getBoostedBonusEffectValue(effectValue);
+  }
+
+  return total;
+};
+
 type GetEffectBreakdownReturn = {
   serverEffectValue: number;
   buildingEffectValues: EffectValueBreakdown;
@@ -44,7 +86,7 @@ type GetEffectBreakdownReturn = {
 export const getEffectBreakdown = (
   effectId: Effect['id'],
   effects: Effect[],
-  currentVillageId: Village['id'],
+  currentTileId: Tile['id'],
 ): GetEffectBreakdownReturn => {
   let serverEffectValue = 1;
 
@@ -86,7 +128,7 @@ export const getEffectBreakdown = (
     const shouldEffectApplyToCurrentVillage =
       effect.scope === 'global' ||
       effect.scope === 'server' ||
-      (effect as VillageEffect).villageId === currentVillageId;
+      (effect as VillageEffect).tileId === currentTileId;
 
     if (!shouldEffectApplyToCurrentVillage) {
       continue;
@@ -99,18 +141,12 @@ export const getEffectBreakdown = (
 
     switch (effect.source) {
       case 'tribe': {
-        // Egyptian hero has double resource production
-        assignEffectValue(effect, heroEffectValues);
+        // Tribal effects are base/static game values. They still need to be
+        // eligible for building bonuses like Trade Office merchant capacity.
+        assignEffectValue(effect, buildingEffectValues);
         break;
       }
       case 'building': {
-        const buildingEffect = effect as VillageBuildingEffect;
-
-        // "Waterworks" is special, because it applies an oasis effect instead of a building one
-        if (buildingEffect.buildingId === 'WATERWORKS') {
-          assignEffectValue(buildingEffect, oasisEffectValues);
-          break;
-        }
         assignEffectValue(effect, buildingEffectValues);
         break;
       }
@@ -133,14 +169,13 @@ export const getEffectBreakdown = (
     }
   }
 
-  const combinedDelta =
-    (buildingEffectValues.bonus - 1) * buildingEffectValues.bonusBooster +
-    (oasisEffectValues.bonus - 1) * oasisEffectValues.bonusBooster +
-    (artifactEffectValues.bonus - 1) * artifactEffectValues.bonusBooster +
-    (heroEffectValues.bonus - 1) * heroEffectValues.bonusBooster +
-    (troopEffectValues.bonus - 1) * troopEffectValues.bonusBooster;
-
-  const combinedBonusEffectValue = 1 + combinedDelta;
+  const combinedBonusEffectValue = combineBonusEffectValues(effectId, [
+    buildingEffectValues,
+    oasisEffectValues,
+    artifactEffectValues,
+    heroEffectValues,
+    troopEffectValues,
+  ]);
 
   return {
     serverEffectValue,
@@ -159,31 +194,26 @@ export type ComputedEffectReturn = {
 
 export type WheatProductionEffectReturn = ComputedEffectReturn & {
   population: number;
-  buildingWheatLimit: number;
 };
 
 export function calculateComputedEffect(
   effectId: 'wheatProduction',
   effects: Effect[],
-  currentVillageId: Village['id'],
+  currentTileId: Tile['id'],
 ): WheatProductionEffectReturn;
 
 export function calculateComputedEffect(
   effectId: Effect['id'],
   effects: Effect[],
-  currentVillageId: Village['id'],
+  currentTileId: Tile['id'],
 ): ComputedEffectReturn;
 
 export function calculateComputedEffect(
   effectId: Effect['id'],
   effects: Effect[],
-  currentVillageId: Village['id'],
+  currentTileId: Tile['id'],
 ): ComputedEffectReturn | WheatProductionEffectReturn {
-  const effectBreakdown = getEffectBreakdown(
-    effectId,
-    effects,
-    currentVillageId,
-  );
+  const effectBreakdown = getEffectBreakdown(effectId, effects, currentTileId);
 
   const {
     serverEffectValue,
@@ -193,15 +223,25 @@ export function calculateComputedEffect(
     artifactEffectValues,
   } = effectBreakdown;
 
-  // Some effects act only as modifiers to hardcoded values.
-  // Examples of these effects are things like building duration and training duration.
-  // In these cases, we need only to return the modifier value to apply to our base.
-  const isBaseBuildingValueABaseValue = buildingEffectValues.base.length > 0;
+  const hasAnyBaseEffect =
+    buildingEffectValues.base.length > 0 ||
+    heroEffectValues.base.length > 0 ||
+    oasisEffectValues.base.length > 0 ||
+    artifactEffectValues.base.length > 0 ||
+    effectBreakdown.troopEffectValues.base.length > 0;
 
-  if (!isBaseBuildingValueABaseValue) {
-    return {
-      total: effectBreakdown.combinedBonusEffectValue * serverEffectValue,
-    };
+  if (!hasAnyBaseEffect) {
+    if (isResourceProductionEffectId(effectId)) {
+      if (effectId === 'wheatProduction') {
+        return {
+          total: 0,
+          population: 0,
+        };
+      }
+      return {
+        total: 0,
+      };
+    }
   }
 
   let summedHeroEffectBaseValue = 0;
@@ -228,6 +268,36 @@ export function calculateComputedEffect(
     summedTroopEffectBaseValue += value;
   }
 
+  // Some effects act only as modifiers to hardcoded values.
+  // Examples of these effects are things like building duration and training duration.
+  // In these cases, we need only to return the modifier value to apply to our base.
+  const isBaseBuildingValueABaseValue = buildingEffectValues.base.length > 0;
+
+  if (!isBaseBuildingValueABaseValue) {
+    const total =
+      summedArtifactEffectBaseValue +
+      summedOasisEffectBaseValue +
+      summedTroopEffectBaseValue +
+      summedHeroEffectBaseValue;
+
+    if (hasAnyBaseEffect) {
+      if (effectId === 'wheatProduction') {
+        return {
+          total,
+          population: 0,
+        };
+      }
+
+      return {
+        total,
+      };
+    }
+
+    return {
+      total: effectBreakdown.combinedBonusEffectValue * serverEffectValue,
+    };
+  }
+
   let summedBuildingEffectBasePositiveValue = 0;
   let summedBuildingEffectBaseNegativeValue = 0;
 
@@ -238,9 +308,22 @@ export function calculateComputedEffect(
     }
 
     const baseValue = value * serverEffectValue;
+
+    if (!isResourceProductionEffectId(effectId)) {
+      const combinedBonus =
+        effectBreakdown.combinedBonusEffectValue > 1
+          ? truncateBonusValue(
+              baseValue * (effectBreakdown.combinedBonusEffectValue - 1),
+            )
+          : 0;
+
+      summedBuildingEffectBasePositiveValue += baseValue + combinedBonus;
+      continue;
+    }
+
     const buildingBonus =
       buildingEffectValues.bonus > 1
-        ? Math.trunc(
+        ? truncateBonusValue(
             baseValue *
               (buildingEffectValues.bonus - 1) *
               buildingEffectValues.bonusBooster,
@@ -248,7 +331,7 @@ export function calculateComputedEffect(
         : 0;
     const heroBonus =
       heroEffectValues.bonus > 1
-        ? Math.trunc(
+        ? truncateBonusValue(
             baseValue *
               (heroEffectValues.bonus - 1) *
               heroEffectValues.bonusBooster,
@@ -256,7 +339,7 @@ export function calculateComputedEffect(
         : 0;
     const artifactBonus =
       artifactEffectValues.bonus > 1
-        ? Math.trunc(
+        ? truncateBonusValue(
             baseValue *
               (artifactEffectValues.bonus - 1) *
               artifactEffectValues.bonusBooster,
@@ -264,7 +347,7 @@ export function calculateComputedEffect(
         : 0;
     const oasisBonus =
       oasisEffectValues.bonus > 1
-        ? Math.trunc(
+        ? truncateBonusValue(
             baseValue *
               (oasisEffectValues.bonus - 1) *
               oasisEffectValues.bonusBooster,
@@ -279,7 +362,7 @@ export function calculateComputedEffect(
     const unitWheatConsumptionBreakdown = getEffectBreakdown(
       'unitWheatConsumption',
       effects,
-      currentVillageId,
+      currentTileId,
     );
 
     const total =
@@ -296,9 +379,6 @@ export function calculateComputedEffect(
     return {
       total,
       population: -summedBuildingEffectBaseNegativeValue,
-      buildingWheatLimit:
-        summedBuildingEffectBasePositiveValue +
-        summedBuildingEffectBaseNegativeValue,
     };
   }
 

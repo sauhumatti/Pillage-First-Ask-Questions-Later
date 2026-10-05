@@ -4,103 +4,6 @@ import type {
 } from '@pillage-first/types/models/game-event';
 import { villageMock } from './village-mock';
 
-export const createBuildingConstructionEventMock = (
-  overrides: Partial<GameEvent<'buildingConstruction'>> = {},
-): GameEvent<'buildingConstruction'> => {
-  return createGameEventMock('buildingConstruction', {
-    buildingId: 'MAIN_BUILDING',
-    buildingFieldId: 19,
-    level: 1,
-    previousLevel: 0,
-    ...overrides,
-  });
-};
-
-export const createBuildingDestructionEventMock = (
-  overrides: Partial<GameEvent<'buildingDestruction'>> = {},
-): GameEvent<'buildingDestruction'> => {
-  return createGameEventMock('buildingDestruction', {
-    buildingId: 'MAIN_BUILDING',
-    buildingFieldId: 19,
-    previousLevel: 1,
-    ...overrides,
-  });
-};
-
-export const createTroopMovementAdventureEventMock = (
-  overrides: Partial<GameEvent<'troopMovementAdventure'>> = {},
-): GameEvent<'troopMovementAdventure'> => {
-  return createGameEventMock('troopMovementAdventure', {
-    targetId: 2,
-    troops: [{ unitId: 'HERO', amount: 1, tileId: 1, source: 1 }],
-    ...overrides,
-  });
-};
-
-export const createTroopMovementRelocationEventMock = (
-  overrides: Partial<GameEvent<'troopMovementRelocation'>> = {},
-): GameEvent<'troopMovementRelocation'> => {
-  return createGameEventMock('troopMovementRelocation', {
-    targetId: 2,
-    troops: [{ unitId: 'HERO', amount: 1, tileId: 1, source: 1 }],
-    ...overrides,
-  });
-};
-
-export const createTroopMovementFindNewVillageEventMock = (
-  overrides: Partial<GameEvent<'troopMovementFindNewVillage'>> = {},
-): GameEvent<'troopMovementFindNewVillage'> => {
-  return createGameEventMock('troopMovementFindNewVillage', {
-    targetId: 2,
-    troops: [],
-    ...overrides,
-  });
-};
-
-export const createTroopMovementAttackEventMock = (
-  overrides: Partial<GameEvent<'troopMovementAttack'>> = {},
-): GameEvent<'troopMovementAttack'> => {
-  return createGameEventMock('troopMovementAttack', {
-    targetId: 2,
-    troops: [{ unitId: 'LEGIONNAIRE', amount: 10, tileId: 1, source: 1 }],
-    ...overrides,
-  });
-};
-
-export const createTroopMovementRaidEventMock = (
-  overrides: Partial<GameEvent<'troopMovementRaid'>> = {},
-): GameEvent<'troopMovementRaid'> => {
-  return createGameEventMock('troopMovementRaid', {
-    targetId: 2,
-    troops: [{ unitId: 'LEGIONNAIRE', amount: 10, tileId: 1, source: 1 }],
-    ...overrides,
-  });
-};
-
-export const createAdventurePointIncreaseEventMock = (
-  overrides: Partial<GameEvent<'adventurePointIncrease'>> = {},
-): GameEvent<'adventurePointIncrease'> => {
-  return createGameEventMock('adventurePointIncrease', {
-    ...overrides,
-  });
-};
-
-export const createHeroRevivalEventMock = (
-  overrides: Partial<GameEvent<'heroRevival'>> = {},
-): GameEvent<'heroRevival'> => {
-  return createGameEventMock('heroRevival', {
-    ...overrides,
-  });
-};
-
-export const createHeroHealthRegenerationEventMock = (
-  overrides: Partial<GameEvent<'heroHealthRegeneration'>> = {},
-): GameEvent<'heroHealthRegeneration'> => {
-  return createGameEventMock('heroHealthRegeneration', {
-    ...overrides,
-  });
-};
-
 export const createGameEventMock = <T extends GameEventType>(
   type: T,
   overrides: Partial<GameEvent<T>> = {},
@@ -121,6 +24,154 @@ export const createGameEventMock = <T extends GameEventType>(
     ...base,
     ...overrides,
   } as GameEvent<T>;
+};
+
+export const createBuildingConstructionEventMock = (
+  overrides: Partial<GameEvent<'buildingConstruction'>> = {},
+): GameEvent<'buildingConstruction'> => {
+  return createGameEventMock('buildingConstruction', {
+    buildingId: 'MAIN_BUILDING',
+    buildingFieldId: 19,
+    level: 1,
+    previousLevel: 0,
+    ...overrides,
+  });
+};
+
+export const createBuildingDestructionEventMock = (
+  overrides: Partial<GameEvent<'buildingDestruction'>> = {},
+): GameEvent<'buildingDestruction'> => {
+  return createGameEventMock('buildingDestruction', {
+    buildingId: 'MAIN_BUILDING',
+    buildingFieldId: 19,
+    previousLevel: 1,
+    level: 0,
+    ...overrides,
+  });
+};
+
+export const createTroopMovementAdventureEventMock = (
+  overrides: Partial<GameEvent<'troopMovementAdventure'>> = {},
+): GameEvent<'troopMovementAdventure'> => {
+  return createGameEventMock('troopMovementAdventure', {
+    originTileId: 1,
+    targetTileId: 1,
+    troops: [{ unitId: 'HERO', amount: 1, tileId: 1, sourceTileId: 1 }],
+    ...overrides,
+  });
+};
+
+export const createTroopMovementRelocationEventMock = (
+  overrides: Partial<GameEvent<'troopMovementRelocation'>> = {},
+): GameEvent<'troopMovementRelocation'> => {
+  return createGameEventMock('troopMovementRelocation', {
+    originTileId: 1,
+    targetTileId: 1,
+    troops: [{ unitId: 'HERO', amount: 1, tileId: 1, sourceTileId: 1 }],
+    ...overrides,
+  });
+};
+
+export const createTroopMovementFindNewVillageEventMock = (
+  overrides: Partial<GameEvent<'troopMovementFindNewVillage'>> = {},
+): GameEvent<'troopMovementFindNewVillage'> => {
+  return createGameEventMock('troopMovementFindNewVillage', {
+    originTileId: 1,
+    targetTileId: 1,
+    troops: [],
+    ...overrides,
+  });
+};
+
+export const createTroopMovementAttackEventMock = (
+  overrides: Partial<GameEvent<'troopMovementAttack'>> = {},
+): GameEvent<'troopMovementAttack'> => {
+  return createGameEventMock('troopMovementAttack', {
+    originTileId: 1,
+    targetTileId: 1,
+    troops: [{ unitId: 'LEGIONNAIRE', amount: 10, tileId: 1, sourceTileId: 1 }],
+    ...overrides,
+  });
+};
+
+export const createTroopMovementRaidEventMock = (
+  overrides: Partial<GameEvent<'troopMovementRaid'>> = {},
+): GameEvent<'troopMovementRaid'> => {
+  return createGameEventMock('troopMovementRaid', {
+    originTileId: 1,
+    targetTileId: 1,
+    troops: [{ unitId: 'LEGIONNAIRE', amount: 10, tileId: 1, sourceTileId: 1 }],
+    ...overrides,
+  });
+};
+
+export const createResourceTransferEventMock = (
+  overrides: Partial<GameEvent<'resourceTransfer'>> = {},
+): GameEvent<'resourceTransfer'> => {
+  return createGameEventMock('resourceTransfer', {
+    originTileId: 1,
+    targetTileId: 2,
+    targetVillageId: 2,
+    resources: {
+      wood: 100,
+      clay: 50,
+      iron: 25,
+      wheat: 10,
+    },
+    merchantAmount: 1,
+    repeatRemaining: 0,
+    repeatResources: {
+      wood: 100,
+      clay: 50,
+      iron: 25,
+      wheat: 10,
+    },
+    ...overrides,
+  });
+};
+
+export const createTradeRouteEventMock = (
+  overrides: Partial<GameEvent<'tradeRoute'>> = {},
+): GameEvent<'tradeRoute'> => {
+  return createGameEventMock('tradeRoute', {
+    originTileId: 1,
+    targetTileId: 2,
+    targetVillageId: 2,
+    resources: {
+      wood: 100,
+      clay: 50,
+      iron: 25,
+      wheat: 10,
+    },
+    interval: 6 * 60 * 60 * 1000,
+    ...overrides,
+  });
+};
+
+export const createHeroRevivalEventMock = (
+  overrides: Partial<GameEvent<'heroRevival'>> = {},
+): GameEvent<'heroRevival'> => {
+  return createGameEventMock('heroRevival', {
+    ...overrides,
+  });
+};
+
+export const createHeroHealthRegenerationEventMock = (
+  overrides: Partial<GameEvent<'heroHealthRegeneration'>> = {},
+): GameEvent<'heroHealthRegeneration'> => {
+  return createGameEventMock('heroHealthRegeneration', {
+    villageId: null,
+    ...overrides,
+  });
+};
+
+export const createLoyaltyIncreaseEventMock = (
+  overrides: Partial<GameEvent<'loyaltyIncrease'>> = {},
+): GameEvent<'loyaltyIncrease'> => {
+  return createGameEventMock('loyaltyIncrease', {
+    villageId: null,
+    ...overrides,
+  });
 };
 
 export const createUnitImprovementEventMock = (

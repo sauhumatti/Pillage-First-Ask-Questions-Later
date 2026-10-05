@@ -1,25 +1,20 @@
-import {
-  type PropsWithChildren,
-  type ReactNode,
-  useEffect,
-  useState,
-} from 'react';
+import { type PropsWithChildren, type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BiWorld } from 'react-icons/bi';
 import { CiImport } from 'react-icons/ci';
 import { FaChevronDown } from 'react-icons/fa';
-import { FaDiscord, FaGithub } from 'react-icons/fa6';
 import { GrHelpBook } from 'react-icons/gr';
 import { IoIosChatbubbles } from 'react-icons/io';
 import { IoCreate } from 'react-icons/io5';
 import { PiHandshakeBold } from 'react-icons/pi';
 import { Link, type LinkProps, useLocation } from 'react-router';
+import { DiscordButton } from 'app/(public)/components/discord-button';
 import { Button } from 'app/components/ui/button';
 
 const DropdownContent = ({ children }: PropsWithChildren) => {
   return (
     <div className="absolute top-full left-0 mt-0 w-64 bg-card rounded-lg shadow-xl border border-border py-2 pt-4 z-20">
-      <div className="absolute -top-2 left-12 w-4 h-4 bg-card border-t border-l border-border rotate-45" />
+      <div className="absolute -top-2 left-12 size-4 bg-card border-t border-l border-border rotate-45" />
       {children}
     </div>
   );
@@ -91,18 +86,12 @@ const NavLink = (props: PropsWithChildren<LinkProps>) => {
   );
 };
 
-export const DesktopNavigation = () => {
+const DesktopNavigationContent = () => {
   const { t } = useTranslation('public');
-  const { key } = useLocation();
 
   const [activeDropdown, setActiveDropdown] = useState<
     'game' | 'resources' | 'guides' | 'social' | null
   >(null);
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: Key is expected
-  useEffect(() => {
-    setActiveDropdown(null);
-  }, [key]);
 
   return (
     <nav className="hidden lg:flex max-w-7xl mx-auto px-4 w-[calc(100%-1rem)] bg-card justify-between my-4 mb-6 border border-border rounded-md shadow-xl z-20 transition-colors">
@@ -125,16 +114,6 @@ export const DesktopNavigation = () => {
               onMouseLeave={() => setActiveDropdown(null)}
             >
               <Link
-                to="/game-worlds"
-                className="flex items-start gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors"
-              >
-                <DropdownLinkContent
-                  label={t('My game worlds')}
-                  description={t('Manage your existing game worlds')}
-                  icon={<BiWorld />}
-                />
-              </Link>
-              <Link
                 to="/game-worlds/create"
                 className="flex items-start gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors"
               >
@@ -142,6 +121,16 @@ export const DesktopNavigation = () => {
                   label={t('Create a new game world')}
                   description={t('Create and configure a new world')}
                   icon={<IoCreate />}
+                />
+              </Link>
+              <Link
+                to="/game-worlds"
+                className="flex items-start gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors"
+              >
+                <DropdownLinkContent
+                  label={t('Your game worlds')}
+                  description={t('Manage your existing game worlds')}
+                  icon={<BiWorld />}
                 />
               </Link>
               <Link
@@ -191,50 +180,23 @@ export const DesktopNavigation = () => {
               </div>
             </NavMenu>
 
-            <NavMenu
-              label={t('Community')}
-              isOpen={activeDropdown === 'social'}
-              onMouseEnter={() => setActiveDropdown('social')}
-              onMouseLeave={() => setActiveDropdown(null)}
-            >
-              <a
-                href="https://discord.gg/Ep7NKVXUZA"
-                className="flex items-start gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <DropdownLinkContent
-                  label="Discord"
-                  description={t('Join the discussion')}
-                  icon={<FaDiscord />}
-                />
-              </a>
-              <a
-                href="https://github.com/jurerotar/Pillage-First-Ask-Questions-Later"
-                className="flex items-start gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <DropdownLinkContent
-                  label="GitHub"
-                  description={t('Contribute or raise issues')}
-                  icon={<FaGithub />}
-                />
-              </a>
-            </NavMenu>
             <NavLink to="/latest-updates">{t('Latest updates')}</NavLink>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
           <Link to="/game-worlds/create">
-            <Button>{t('Try now')}</Button>
+            <Button>{t('Create new world')}</Button>
           </Link>
-          <Link to="/game-worlds">
-            <Button variant="outline">{t('Existing game worlds')}</Button>
-          </Link>
+          <DiscordButton>Discord</DiscordButton>
         </div>
       </div>
     </nav>
   );
+};
+
+export const DesktopNavigation = () => {
+  const { key } = useLocation();
+
+  return <DesktopNavigationContent key={key} />;
 };

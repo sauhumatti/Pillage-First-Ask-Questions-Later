@@ -1,24 +1,19 @@
 import { clsx } from 'clsx';
-import { Suspense } from 'react';
-import type { TroopMovementEvent } from '@pillage-first/types/models/game-event';
-import type { Village } from '@pillage-first/types/models/village';
-import {
-  isAdventureTroopMovementEvent,
-  isAttackTroopMovementEvent,
-  isFindNewVillageTroopMovementEvent,
-  isOasisOccupationTroopMovementEvent,
-  isRaidTroopMovementEvent,
-  isReinforcementsTroopMovementEvent,
-  isRelocationTroopMovementEvent,
-  isReturnTroopMovementEvent,
-} from '@pillage-first/utils/guards/event';
+import { Suspense, use, useMemo } from 'react';
+import { Link } from 'react-router';
 import { Countdown } from 'app/(game)/(village-slug)/components/countdown';
 import { useCurrentVillage } from 'app/(game)/(village-slug)/hooks/current-village/use-current-village';
 import { useEventsByType } from 'app/(game)/(village-slug)/hooks/use-events-by-type';
 import { useGameLayoutState } from 'app/(game)/(village-slug)/hooks/use-game-layout-state';
+import { useVillageTroopMovements } from 'app/(game)/(village-slug)/hooks/use-village-troop-movements';
+import { GameLayoutContext } from 'app/(game)/(village-slug)/providers/game-layout-context';
 import { Icon } from 'app/components/icon';
 import type { IconType } from 'app/components/icons/icons';
 import { Separator } from 'app/components/ui/separator';
+
+type MovementEvent = {
+  resolvesAt: number;
+};
 
 type TroopMovementProps = {
   type: Extract<
@@ -29,18 +24,21 @@ type TroopMovementProps = {
     | 'offensiveMovementIncoming'
     | 'adventure'
     | 'findNewVillage'
+    | 'huntingParty'
+    | 'gatheringTrip'
   >;
-  events: TroopMovementEvent[];
+  events: MovementEvent[];
+  href?: string;
 };
 
-const TroopMovement = ({ type, events }: TroopMovementProps) => {
+const TroopMovement = ({ type, events, href }: TroopMovementProps) => {
   if (events.length === 0) {
     return null;
   }
 
   const [earliestEvent] = events;
 
-  return (
+  const content = (
     <div className="inline-flex gap-1 bg-background border-2 border-l-0 items-center rounded-r-xs border-white/80 dark:border-border/80 py-0.5 px-2 lg:py-1 shadow-sm font-semibold text-xs lg:text-base transition-colors">
       <span className="inline-flex gap-2 min-w-16">
         <Icon
@@ -51,7 +49,7 @@ const TroopMovement = ({ type, events }: TroopMovementProps) => {
             type === 'offensiveMovementIncoming' && 'animate-scale-pulse',
           )}
         />
-        <Countdown endsAt={earliestEvent.startsAt + earliestEvent.duration} />
+        <Countdown endsAt={earliestEvent.resolvesAt} />
       </span>
       <Separator orientation="vertical" />
       <span className="inline-flex min-w-4 lg:min-w-6 justify-end">
@@ -59,53 +57,132 @@ const TroopMovement = ({ type, events }: TroopMovementProps) => {
       </span>
     </div>
   );
+
+  if (href) {
+    return (
+      <Link
+        to={href}
+        relative="path"
+      >
+        {content}
+      </Link>
+    );
+  }
+
+  return content;
+};
+
+const HuntersLodgeHuntMovement = () => {
+  const { currentVillage } = useCurrentVillage();
+  const { eventsByType: huntersLodgeHuntEvents } =
+    useEventsByType('huntersLodgeHunt');
+
+  const huntersLodge = useMemo(() => {
+    return currentVillage.buildingFields.find(
+      (field) => field.buildingId === 'HUNTERS_LODGE',
+    );
+  }, [currentVillage.buildingFields]);
+
+  const huntersLodgeLink = useMemo(() => {
+    return huntersLodge && huntersLodge.level >= 1
+      ? `village/${huntersLodge.id}?tab=hunting-party`
+      : undefined;
+  }, [huntersLodge]);
+
+  if (huntersLodgeHuntEvents.length === 0) {
+    return null;
+  }
+
+  return (
+    <TroopMovement
+      type="huntingParty"
+      events={huntersLodgeHuntEvents}
+      href={huntersLodgeLink}
+    />
+  );
+};
+
+const GatherersHutGatheringTripMovement = () => {
+  const { currentVillage } = useCurrentVillage();
+  const { eventsByType: gatherersHutGatheringTripEvents } = useEventsByType(
+    'gatherersHutGatheringTrip',
+  );
+
+  const gatherersHut = useMemo(() => {
+    return currentVillage.buildingFields.find(
+      (field) => field.buildingId === 'GATHERERS_HUT',
+    );
+  }, [currentVillage.buildingFields]);
+
+  const gatherersHutLink = useMemo(() => {
+    return gatherersHut && gatherersHut.level >= 1
+      ? `village/${gatherersHut.id}?tab=gathering-expedition`
+      : undefined;
+  }, [gatherersHut]);
+
+  if (gatherersHutGatheringTripEvents.length === 0) {
+    return null;
+  }
+
+  return (
+    <TroopMovement
+      type="gatheringTrip"
+      events={gatherersHutGatheringTripEvents}
+      href={gatherersHutLink}
+    />
+  );
 };
 
 const partitionTroopMovementEvents = (
-  events: TroopMovementEvent[],
-  currentVillageId: Village['id'],
+  events: ReturnType<typeof useVillageTroopMovements>['troopMovements'],
+  currentVillageId: number,
 ) => {
   // Raid, attack, oasis-occupation
-  const outgoingOffensiveMovementEvents: TroopMovementEvent[] = [];
+  const outgoingOffensiveMovementEvents: typeof events = [];
   // Relocation, reinforcement
-  const outgoingDeploymentMovementEvents: TroopMovementEvent[] = [];
+  const outgoingDeploymentMovementEvents: typeof events = [];
   // Raid, attack
-  const incomingOffensiveMovementEvents: TroopMovementEvent[] = [];
+  const incomingOffensiveMovementEvents: typeof events = [];
   // Relocation, reinforcement, return
-  const incomingDeploymentMovementEvents: TroopMovementEvent[] = [];
-  const adventureMovementEvents: TroopMovementEvent[] = [];
-  const findNewVillageMovementEvents: TroopMovementEvent[] = [];
+  const incomingDeploymentMovementEvents: typeof events = [];
+  const adventureMovementEvents: typeof events = [];
+  const findNewVillageMovementEvents: typeof events = [];
 
   for (const event of events) {
-    if (isFindNewVillageTroopMovementEvent(event)) {
+    if (event.type === 'troopMovementFindNewVillage') {
       findNewVillageMovementEvents.push(event);
       continue;
     }
-    if (isAdventureTroopMovementEvent(event)) {
+    if (event.type === 'troopMovementAdventure') {
       adventureMovementEvents.push(event);
       continue;
     }
     if (
-      isReinforcementsTroopMovementEvent(event) ||
-      isRelocationTroopMovementEvent(event) ||
-      isReturnTroopMovementEvent(event)
+      event.type === 'troopMovementReinforcements' ||
+      event.type === 'troopMovementRelocation' ||
+      event.type === 'troopMovementReturn'
     ) {
-      const target =
-        currentVillageId === event.targetId
-          ? incomingDeploymentMovementEvents
-          : outgoingDeploymentMovementEvents;
+      const isIncoming = event.originatingVillageId !== currentVillageId;
+
+      const target = isIncoming
+        ? incomingDeploymentMovementEvents
+        : outgoingDeploymentMovementEvents;
       target.push(event);
       continue;
     }
-    if (isAttackTroopMovementEvent(event) || isRaidTroopMovementEvent(event)) {
-      const target =
-        currentVillageId === event.targetId
-          ? incomingOffensiveMovementEvents
-          : outgoingOffensiveMovementEvents;
+    if (
+      event.type === 'troopMovementAttack' ||
+      event.type === 'troopMovementRaid'
+    ) {
+      const isIncoming = event.originatingVillageId !== currentVillageId;
+
+      const target = isIncoming
+        ? incomingOffensiveMovementEvents
+        : outgoingOffensiveMovementEvents;
       target.push(event);
       continue;
     }
-    if (isOasisOccupationTroopMovementEvent(event)) {
+    if (event.type === 'troopMovementOasisOccupation') {
       outgoingOffensiveMovementEvents.push(event);
     }
   }
@@ -122,8 +199,8 @@ const partitionTroopMovementEvents = (
 
 const TroopMovementsContent = () => {
   const { currentVillage } = useCurrentVillage();
-  const { eventsByType: troopMovementEvents } =
-    useEventsByType('troopMovement');
+  const { troopMovements } = useVillageTroopMovements();
+  const { areMobileDetailsVisible } = use(GameLayoutContext);
 
   const {
     findNewVillageMovementEvents,
@@ -132,33 +209,56 @@ const TroopMovementsContent = () => {
     outgoingDeploymentMovementEvents,
     incomingDeploymentMovementEvents,
     adventureMovementEvents,
-  } = partitionTroopMovementEvents(troopMovementEvents, currentVillage.id);
+  } = partitionTroopMovementEvents(troopMovements, currentVillage.id);
+
+  const rallyPoint = useMemo(() => {
+    return currentVillage.buildingFields.find((field) => field.id === 39);
+  }, [currentVillage.buildingFields]);
+
+  const rallyPointLink = useMemo(() => {
+    return rallyPoint && rallyPoint.level >= 1
+      ? 'village/39?tab=troop-movements'
+      : undefined;
+  }, [rallyPoint]);
 
   return (
-    <aside className="flex flex-col gap-1 lg:gap-2 fixed left-0 top-30 lg:top-40 z-20">
+    <aside
+      className={clsx(
+        areMobileDetailsVisible ? 'top-29' : 'top-25',
+        'flex flex-col gap-1 lg:gap-2 fixed left-safe lg:top-40 z-20 transition-[left,top] ease-out',
+      )}
+    >
       <TroopMovement
         type="findNewVillage"
         events={findNewVillageMovementEvents}
+        href={rallyPointLink}
       />
       <TroopMovement
         type="adventure"
         events={adventureMovementEvents}
+        href={rallyPointLink}
       />
+      <HuntersLodgeHuntMovement />
+      <GatherersHutGatheringTripMovement />
       <TroopMovement
         type="deploymentOutgoing"
         events={outgoingDeploymentMovementEvents}
+        href={rallyPointLink}
       />
       <TroopMovement
         type="deploymentIncoming"
         events={incomingDeploymentMovementEvents}
+        href={rallyPointLink}
       />
       <TroopMovement
         type="offensiveMovementOutgoing"
         events={outgoingOffensiveMovementEvents}
+        href={rallyPointLink}
       />
       <TroopMovement
         type="offensiveMovementIncoming"
         events={incomingOffensiveMovementEvents}
+        href={rallyPointLink}
       />
     </aside>
   );

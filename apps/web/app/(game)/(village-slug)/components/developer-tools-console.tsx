@@ -8,13 +8,14 @@ import type { Resource } from '@pillage-first/types/models/resource';
 import {
   Section,
   SectionContent,
-} from 'app/(game)/(village-slug)/components/building-layout.tsx';
+} from 'app/(game)/(village-slug)/components/building-layout';
+import { ErrorBag } from 'app/(game)/(village-slug)/components/error-bag';
 import { useCurrentVillage } from 'app/(game)/(village-slug)/hooks/current-village/use-current-village';
 import { useDeveloperSettings } from 'app/(game)/(village-slug)/hooks/use-developer-settings';
-import { useHero } from 'app/(game)/(village-slug)/hooks/use-hero.ts';
+import { useHero } from 'app/(game)/(village-slug)/hooks/use-hero';
 import { usePreferences } from 'app/(game)/(village-slug)/hooks/use-preferences';
-import { Icon } from 'app/components/icon.tsx';
-import { Text } from 'app/components/text.tsx';
+import { Icon } from 'app/components/icon';
+import { Text } from 'app/components/text';
 import { Button } from 'app/components/ui/button';
 import {
   Dialog,
@@ -34,6 +35,7 @@ import {
 } from 'app/components/ui/select';
 import { Separator } from 'app/components/ui/separator';
 import { Switch } from 'app/components/ui/switch';
+import { useLoyalty } from '../hooks/use-loyalty';
 
 export const DeveloperToolsButton = ({
   className,
@@ -77,6 +79,7 @@ const FREE_SETTINGS: (keyof DeveloperSettings)[] = [
   'isFreeUnitTrainingEnabled',
   'isFreeUnitImprovementEnabled',
   'isFreeUnitResearchEnabled',
+  'isFreeHuntingPartiesEnabled',
   'isFreeHeroReviveEnabled',
 ];
 
@@ -93,8 +96,11 @@ export const DeveloperToolsConsole = ({
     spawnHeroItem,
     levelUpHero,
     incrementHeroAdventurePoints,
+    killHero,
+    adjustLoyalty,
   } = useDeveloperSettings();
-  const { hero } = useHero();
+  const { hero, isHeroAlive, isHeroHome } = useHero();
+  const { loyalty } = useLoyalty();
 
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [amount, setAmount] = useState(1);
@@ -102,6 +108,8 @@ export const DeveloperToolsConsole = ({
   const { level } = useMemo(() => {
     return calculateHeroLevel(hero.stats.experience);
   }, [hero.stats.experience]);
+
+  const canKillHero = isHeroAlive && isHeroHome;
 
   const handleUpdateResource = (
     resource: Resource,
@@ -133,14 +141,15 @@ export const DeveloperToolsConsole = ({
 
   const SETTING_LABELS: Record<keyof DeveloperSettings, string> = {
     isInstantBuildingConstructionEnabled: t('Instant building construction'),
-    isInstantUnitTrainingEnabled: t('Instant unit training'),
+    isInstantUnitTrainingEnabled: t('Instant unit production'),
     isInstantUnitImprovementEnabled: t('Instant unit improvement'),
     isInstantUnitResearchEnabled: t('Instant unit research'),
-    isInstantUnitTravelEnabled: t('Instant unit travel'),
+    isInstantUnitTravelEnabled: t('Instant troop movement'),
     isFreeBuildingConstructionEnabled: t('Free building construction'),
-    isFreeUnitTrainingEnabled: t('Free unit training'),
+    isFreeUnitTrainingEnabled: t('Free unit production'),
     isFreeUnitImprovementEnabled: t('Free unit improvement'),
     isFreeUnitResearchEnabled: t('Free unit research'),
+    isFreeHuntingPartiesEnabled: t('Free hunting parties'),
     isInstantHeroReviveEnabled: t('Instant hero revives'),
     isFreeHeroReviveEnabled: t('Free hero revives'),
   };
@@ -150,7 +159,7 @@ export const DeveloperToolsConsole = ({
       'Buildings are constructed instantly without waiting.',
     ),
     isInstantUnitTrainingEnabled: t(
-      'Units are trained instantly in buildings.',
+      'Units, Trapper cages and animal cages are produced instantly in buildings.',
     ),
     isInstantUnitImprovementEnabled: t(
       'Units are improved instantly in the smithy.',
@@ -158,16 +167,23 @@ export const DeveloperToolsConsole = ({
     isInstantUnitResearchEnabled: t(
       'Units are researched instantly in the academy.',
     ),
-    isInstantUnitTravelEnabled: t('Units reach their destination instantly.'),
+    isInstantUnitTravelEnabled: t(
+      'Troop movements, hunting parties, and gathering expeditions complete instantly.',
+    ),
     isFreeBuildingConstructionEnabled: t(
       'Buildings do not cost any resources to construct.',
     ),
-    isFreeUnitTrainingEnabled: t('Units do not cost any resources to train.'),
+    isFreeUnitTrainingEnabled: t(
+      'Units, Trapper cages and animal cages do not cost any resources to produce.',
+    ),
     isFreeUnitImprovementEnabled: t(
       'Units do not cost any resources to improve.',
     ),
     isFreeUnitResearchEnabled: t(
       'Units do not cost any resources to research.',
+    ),
+    isFreeHuntingPartiesEnabled: t(
+      'Hunting parties do not cost any resources.',
     ),
     isInstantHeroReviveEnabled: t('Heroes are revived instantly.'),
     isFreeHeroReviveEnabled: t('Heroes do not cost any resources to revive.'),
@@ -389,6 +405,44 @@ export const DeveloperToolsConsole = ({
               <Button onClick={() => incrementHeroAdventurePoints()}>
                 {t('Add 1 adventure point')}
               </Button>
+            </div>
+          </SectionContent>
+
+          <Separator orientation="horizontal" />
+
+          <SectionContent>
+            <Text as="h3">{t('Kill hero')}</Text>
+            <div className="flex flex-col gap-1 items-start">
+              <Button
+                variant="destructive"
+                disabled={!canKillHero}
+                onClick={() => killHero()}
+              >
+                {t('Kill hero')}
+              </Button>
+              {!canKillHero && (
+                <ErrorBag
+                  errorBag={['Hero must be at home and alive to be killed']}
+                />
+              )}
+            </div>
+          </SectionContent>
+
+          <Separator orientation="horizontal" />
+
+          <SectionContent>
+            <Text as="h3">{t('Adjust village loyalty')}</Text>
+            <Text>
+              {t('Current loyalty')}: {loyalty}%
+            </Text>
+            <div className="flex gap-1 items-start">
+              <Button
+                variant="destructive"
+                onClick={() => adjustLoyalty({ amount: -10 })}
+              >
+                -10
+              </Button>
+              <Button onClick={() => adjustLoyalty({ amount: 10 })}>+10</Button>
             </div>
           </SectionContent>
         </Section>

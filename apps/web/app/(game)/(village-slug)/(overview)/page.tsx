@@ -7,19 +7,18 @@ import {
   Section,
   SectionContent,
 } from 'app/(game)/(village-slug)/components/building-layout';
+import { GatherersHutGatheringExpeditionTable } from 'app/(game)/(village-slug)/components/gatherers-hut-gathering-expedition-table';
+import { HuntersLodgeHuntingPartyTable } from 'app/(game)/(village-slug)/components/hunters-lodge-hunting-party-table';
+import { MainBuildingDemolitionTable } from 'app/(game)/(village-slug)/components/main-building-demolition-table';
+import { MerchantMovementTable } from 'app/(game)/(village-slug)/components/merchant-movement-table';
 import { SmithyImprovementTable } from 'app/(game)/(village-slug)/components/smithy-improvement-table';
 import { VillageConstructionTable } from 'app/(game)/(village-slug)/components/village-construction-table';
 import { useCurrentVillage } from 'app/(game)/(village-slug)/hooks/current-village/use-current-village';
 import { useTribe } from 'app/(game)/(village-slug)/hooks/use-tribe';
+import { InformationPopover } from 'app/(game)/components/information-popover';
+import { PageContents } from 'app/components/page-contents';
 import { Text } from 'app/components/text';
 import { Alert } from 'app/components/ui/alert';
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbSeparator,
-} from 'app/components/ui/breadcrumb';
 import { Separator } from 'app/components/ui/separator';
 
 const OverviewPage = ({ params }: Route.ComponentProps) => {
@@ -34,6 +33,9 @@ const OverviewPage = ({ params }: Route.ComponentProps) => {
     doesSmithyExist,
     doesMarketplaceExist,
     doesBreweryExist,
+    doesHuntersLodgeExist,
+    doesGatherersHutExist,
+    isMainBuildingAboveLevel10,
   ] = useMemo(() => {
     const fields = currentVillage.buildingFields;
 
@@ -41,6 +43,9 @@ const OverviewPage = ({ params }: Route.ComponentProps) => {
     let hasSmithyBuilding = false;
     let hasMarketplaceBuilding = false;
     let hasBreweryBuilding = false;
+    let hasHuntersLodgeBuilding = false;
+    let hasGatherersHutBuilding = false;
+    let hasMainBuildingAboveLevel10 = false;
 
     for (const field of fields) {
       const id = field.buildingId;
@@ -62,6 +67,18 @@ const OverviewPage = ({ params }: Route.ComponentProps) => {
           hasBreweryBuilding = true;
           break;
         }
+        case 'HUNTERS_LODGE': {
+          hasHuntersLodgeBuilding = true;
+          break;
+        }
+        case 'GATHERERS_HUT': {
+          hasGatherersHutBuilding = true;
+          break;
+        }
+        case 'MAIN_BUILDING': {
+          hasMainBuildingAboveLevel10 = field.level >= 10;
+          break;
+        }
       }
     }
 
@@ -70,38 +87,50 @@ const OverviewPage = ({ params }: Route.ComponentProps) => {
       hasSmithyBuilding,
       hasMarketplaceBuilding,
       hasBreweryBuilding,
+      hasHuntersLodgeBuilding,
+      hasGatherersHutBuilding,
+      hasMainBuildingAboveLevel10,
     ];
   }, [currentVillage.buildingFields]);
 
+  const mainBuildingName = t('BUILDINGS.MAIN_BUILDING.NAME');
   const academyName = t('BUILDINGS.ACADEMY.NAME');
   const smithyName = t('BUILDINGS.SMITHY.NAME');
   const marketplaceName = t('BUILDINGS.MARKETPLACE.NAME');
   const breweryName = t('BUILDINGS.BREWERY.NAME');
+  const huntersLodgeName = t('BUILDINGS.HUNTERS_LODGE.NAME');
+  const gatherersHutName = t('BUILDINGS.GATHERERS_HUT.NAME');
 
   const title = `${t('Overview')} | Pillage First! - ${serverSlug} - ${villageSlug}`;
 
   return (
-    <>
+    <PageContents>
       <title>{title}</title>
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink to="../village">{t('Village')}</BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>{t('Village overview')}</BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
-      <Section>
-        <Text as="h1">{t('Village overview')}</Text>
+      <InformationPopover
+        ariaLabel={t('Village overview')}
+        className="top-2 right-2"
+      >
         <Text>
           {t(
-            'Village overview allows you to track construction queue, active troop training, smithy and academy queues, monitor merchant availability and movements and track ongoing celebrations.',
+            'Village overview allows you to track construction queue, active troop training, smithy and academy queues, monitor merchant availability and movements, hunting parties, gathering expeditions and ongoing celebrations.',
           )}
         </Text>
+      </InformationPopover>
+      <Text as="h1">{t('Village overview')}</Text>
+      <Section>
         <SectionContent>
           <Text as="h2">{t('Construction')}</Text>
           <VillageConstructionTable />
+        </SectionContent>
+        <Separator orientation="horizontal" />
+        <SectionContent>
+          <Text as="h2">{t('Demolition')}</Text>
+          {!isMainBuildingAboveLevel10 &&
+            t(
+              'You need to upgrade the {{buildingName}} to level 10 before you can start demolishing buildings.',
+              { buildingName: mainBuildingName },
+            )}
+          {isMainBuildingAboveLevel10 && <MainBuildingDemolitionTable />}
         </SectionContent>
         <Separator orientation="horizontal" />
         <SectionContent>
@@ -115,6 +144,28 @@ const OverviewPage = ({ params }: Route.ComponentProps) => {
           <TroopTrainingQueue buildingId="GREAT_BARRACKS" />
           <Separator orientation="horizontal" />
           <TroopTrainingQueue buildingId="GREAT_STABLE" />
+          <Separator orientation="horizontal" />
+          <TroopTrainingQueue buildingId="RESIDENCE" />
+        </SectionContent>
+        <Separator orientation="horizontal" />
+        <SectionContent>
+          <Text as="h2">{huntersLodgeName}</Text>
+          {!doesHuntersLodgeExist &&
+            t(
+              'You need to build the {{buildingName}} before you can start hunting parties.',
+              { buildingName: huntersLodgeName },
+            )}
+          {doesHuntersLodgeExist && <HuntersLodgeHuntingPartyTable />}
+        </SectionContent>
+        <Separator orientation="horizontal" />
+        <SectionContent>
+          <Text as="h2">{gatherersHutName}</Text>
+          {!doesGatherersHutExist &&
+            t(
+              'You need to build the {{buildingName}} before you can start gathering expeditions.',
+              { buildingName: gatherersHutName },
+            )}
+          {doesGatherersHutExist && <GatherersHutGatheringExpeditionTable />}
         </SectionContent>
         <Separator orientation="horizontal" />
         <SectionContent>
@@ -144,9 +195,7 @@ const OverviewPage = ({ params }: Route.ComponentProps) => {
               'You need to build the {{buildingName}} before you can dispatch merchants.',
               { buildingName: marketplaceName },
             )}
-          <Alert variant="warning">
-            {t('This section is still under development')}
-          </Alert>
+          {doesMarketplaceExist && <MerchantMovementTable />}
         </SectionContent>
         {tribe === 'teutons' && (
           <>
@@ -165,7 +214,7 @@ const OverviewPage = ({ params }: Route.ComponentProps) => {
           </>
         )}
       </Section>
-    </>
+    </PageContents>
   );
 };
 

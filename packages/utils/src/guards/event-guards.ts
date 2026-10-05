@@ -16,22 +16,33 @@ export const isBuildingDestructionEvent = (
   return event.type === 'buildingDestruction';
 };
 
-export const isBuildingLevelUpEvent = (
+export const isBuildingLevelChangeEvent = (
   event: GameEvent,
 ): event is GameEvent<'buildingLevelChange'> => {
   return event.type === 'buildingLevelChange';
 };
 
+export const isBuildingDowngradeEvent = (
+  event: GameEvent,
+): event is GameEvent<'buildingLevelChange'> => {
+  return (
+    (isBuildingLevelChangeEvent(event) && event.previousLevel > event.level) ||
+    isBuildingDestructionEvent(event)
+  );
+};
+
+const buildingEventTypes = new Set<GameEventType>([
+  'buildingConstruction',
+  'buildingLevelChange',
+  'buildingDestruction',
+]);
+
 export const isBuildingEvent = (
   event: GameEvent,
 ): event is GameEvent<
-  'buildingScheduledConstruction' | 'buildingLevelChange'
+  'buildingConstruction' | 'buildingLevelChange' | 'buildingDestruction'
 > => {
-  const buildingEventTypes: GameEventType[] = [
-    'buildingScheduledConstruction',
-    'buildingLevelChange',
-  ];
-  return buildingEventTypes.includes(event.type);
+  return buildingEventTypes.has(event.type);
 };
 
 const troopMovementEventTypes = new Set<GameEventType>([
@@ -69,6 +80,17 @@ export const isReturnTroopMovementEvent = (
   return event.type === 'troopMovementReturn';
 };
 
+// If event.originalMovementType is undefined, it means that we're dealing with a troop reinforcement return situation.
+// Other events fill `originalMovementType` property.
+export const isManuallyTriggeredReturnTroopMovementEvent = (
+  event: GameEvent,
+): event is GameEvent<'troopMovementReturn'> => {
+  return (
+    isReturnTroopMovementEvent(event) &&
+    event.originalMovementType === 'troopMovementReturnReinforcements'
+  );
+};
+
 export const isFindNewVillageTroopMovementEvent = (
   event: GameEvent,
 ): event is GameEvent<'troopMovementFindNewVillage'> => {
@@ -99,12 +121,6 @@ export const isAdventureTroopMovementEvent = (
   return event.type === 'troopMovementAdventure';
 };
 
-export const isScheduledBuildingEvent = (
-  event: GameEvent,
-): event is GameEvent<'buildingScheduledConstruction'> => {
-  return event.type === 'buildingScheduledConstruction';
-};
-
 export const isUnitImprovementEvent = (
   event: GameEvent,
 ): event is GameEvent<'unitImprovement'> => {
@@ -123,10 +139,28 @@ export const isTroopTrainingEvent = (
   return event.type === 'troopTraining';
 };
 
-export const isAdventurePointIncreaseEvent = (
+export const isAnimalCageProductionEvent = (
   event: GameEvent,
-): event is GameEvent<'adventurePointIncrease'> => {
-  return event.type === 'adventurePointIncrease';
+): event is GameEvent<'animalCageProduction'> => {
+  return event.type === 'animalCageProduction';
+};
+
+export const isTrapperCageProductionEvent = (
+  event: GameEvent,
+): event is GameEvent<'trapperCageProduction'> => {
+  return event.type === 'trapperCageProduction';
+};
+
+export const isHuntersLodgeHuntEvent = (
+  event: GameEvent,
+): event is GameEvent<'huntersLodgeHunt'> => {
+  return event.type === 'huntersLodgeHunt';
+};
+
+export const isGatherersHutGatheringTripEvent = (
+  event: GameEvent,
+): event is GameEvent<'gatherersHutGatheringTrip'> => {
+  return event.type === 'gatherersHutGatheringTrip';
 };
 
 export const isHeroRevivalEvent = (
@@ -139,4 +173,22 @@ export const isHeroHealthRegenerationEvent = (
   event: GameEvent,
 ): event is GameEvent<'heroHealthRegeneration'> => {
   return event.type === 'heroHealthRegeneration';
+};
+
+export const isLoyaltyIncreaseEvent = (
+  event: GameEvent,
+): event is GameEvent<'loyaltyIncrease'> => {
+  return event.type === 'loyaltyIncrease';
+};
+
+export const isResourceTransferEvent = (
+  event: GameEvent,
+): event is GameEvent<'resourceTransfer'> => {
+  return event.type === 'resourceTransfer';
+};
+
+export const isTradeRouteEvent = (
+  event: GameEvent,
+): event is GameEvent<'tradeRoute'> => {
+  return event.type === 'tradeRoute';
 };

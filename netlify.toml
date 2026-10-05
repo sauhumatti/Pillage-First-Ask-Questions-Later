@@ -1,5 +1,5 @@
 [build]
-command = "npm run inject-graphics && mkdir -p apps/web/public/graphic-packs/default/buildings/village && cp -r custom-graphics/buildings/village/. apps/web/public/graphic-packs/default/buildings/village/ && mkdir -p apps/web/public/graphic-packs/default/backgrounds && cp custom-graphics/backgrounds/village-*.jpg apps/web/public/graphic-packs/default/backgrounds/ && turbo run build"
+command = "npm run inject-graphics && mkdir -p apps/web/public/graphic-packs/default/buildings/village && cp -r custom-graphics/buildings/village/. apps/web/public/graphic-packs/default/buildings/village/ && mkdir -p apps/web/public/graphic-packs/default/backgrounds && cp custom-graphics/backgrounds/village-*.jpg apps/web/public/graphic-packs/default/backgrounds/ && turbo run build && node scripts/generate-indexnow-manifest.ts"
 publish = "apps/web/build/client"
 image = "ubuntu-24.04"
 
@@ -9,8 +9,12 @@ NODE_VERSION = "24.12.0"
 
 # branch-deploy
 [context.branch-deploy]
-command = "npm run inject-graphics && turbo run build:dev"
+command = "npm run inject-graphics && mkdir -p apps/web/public/graphic-packs/default/buildings/village && cp -r custom-graphics/buildings/village/. apps/web/public/graphic-packs/default/buildings/village/ && mkdir -p apps/web/public/graphic-packs/default/backgrounds && cp custom-graphics/backgrounds/village-*.jpg apps/web/public/graphic-packs/default/backgrounds/ && turbo run build:dev"
 
 # deploy-preview
 [context.deploy-preview]
-command = "npm run inject-graphics && turbo run build:dev"
+command = "npm run inject-graphics && mkdir -p apps/web/public/graphic-packs/default/buildings/village && cp -r custom-graphics/buildings/village/. apps/web/public/graphic-packs/default/buildings/village/ && mkdir -p apps/web/public/graphic-packs/default/backgrounds && cp custom-graphics/backgrounds/village-*.jpg apps/web/public/graphic-packs/default/backgrounds/ && turbo run build:dev"
+
+[[edge_functions]]
+path = "/api/discord-members"
+function = "discord-members"

@@ -2,14 +2,14 @@ import sqlite3InitModule from '@sqlite.org/sqlite-wasm';
 import type { TestProject } from 'vitest/node';
 import { serverMock } from '@pillage-first/mocks/server';
 import { createDbFacade } from '@pillage-first/utils/facades/database';
-import { migrateAndSeed } from '../index.ts';
+import { migrateAndSeed } from '../index';
 
 const setup = async ({ provide }: TestProject): Promise<void> => {
   const sqlite3 = await sqlite3InitModule();
   const oo1Db = new sqlite3.oo1.DB(':memory:', 'c');
   const database = createDbFacade(oo1Db, false);
 
-  database.exec({
+  database.execMulti({
     sql: `
       PRAGMA page_size = 4096;
       PRAGMA locking_mode = EXCLUSIVE;

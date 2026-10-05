@@ -1,17 +1,14 @@
 import { use, useMemo } from 'react';
-import type { Building } from '@pillage-first/types/models/building';
 import type { BuildingField } from '@pillage-first/types/models/building-field';
 import { useCurrentVillage } from 'app/(game)/(village-slug)/hooks/current-village/use-current-village';
-import { CurrentVillageBuildingQueueContext } from 'app/(game)/(village-slug)/providers/current-village-building-queue-provider';
+import { CurrentVillageBuildingQueueContext } from 'app/(game)/(village-slug)/providers/current-village-building-queue-context';
 
 export const useBuildingVirtualLevel = (
-  buildingId: Building['id'],
   buildingFieldId: BuildingField['id'],
 ) => {
   const { currentVillage } = useCurrentVillage();
-  const { currentVillageBuildingEvents } = use(
-    CurrentVillageBuildingQueueContext,
-  );
+  const { buildingUpgradeEventCountByFieldId, downgradedBuildingByFieldId } =
+    use(CurrentVillageBuildingQueueContext);
 
   const building = useMemo(() => {
     return currentVillage.buildingFields.find(
@@ -23,28 +20,32 @@ export const useBuildingVirtualLevel = (
   const actualLevel = building?.level ?? 0;
 
   const virtualLevel = useMemo(() => {
-    const sameBuildingConstructionEvents = currentVillageBuildingEvents.filter(
-      ({
-        buildingFieldId: eventBuildingFieldId,
-        buildingId: buildingUnderConstructionId,
-      }) => {
-        return (
-          buildingUnderConstructionId === buildingId &&
-          eventBuildingFieldId === buildingFieldId
-        );
-      },
-    );
+    const isDowngradingBuilding =
+      downgradedBuildingByFieldId.has(buildingFieldId);
 
-    if (sameBuildingConstructionEvents.length > 0) {
-      return actualLevel + sameBuildingConstructionEvents.length;
+    if (isDowngradingBuilding) {
+      return actualLevel - 1;
     }
 
-    return actualLevel;
-  }, [currentVillageBuildingEvents, buildingId, buildingFieldId, actualLevel]);
+    return (
+      actualLevel +
+      (buildingUpgradeEventCountByFieldId.get(buildingFieldId) ?? 0)
+    );
+  }, [
+    buildingUpgradeEventCountByFieldId,
+    downgradedBuildingByFieldId,
+    buildingFieldId,
+    actualLevel,
+  ]);
+
+  const isUpgrading = virtualLevel > actualLevel;
+  const isDowngrading = virtualLevel < actualLevel;
 
   return {
     doesBuildingExist,
     actualLevel,
     virtualLevel,
+    isUpgrading,
+    isDowngrading,
   };
 };

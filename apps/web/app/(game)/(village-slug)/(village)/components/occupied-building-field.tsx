@@ -7,54 +7,48 @@ import type { Building } from '@pillage-first/types/models/building';
 import type { BuildingField as BuildingFieldType } from '@pillage-first/types/models/building-field';
 import type { BuildingEvent } from '@pillage-first/types/models/game-event';
 import type { ResourceFieldComposition } from '@pillage-first/types/models/resource-field-composition';
+import { BuildingUpgradeIndicator } from 'app/(game)/(village-slug)/(village)/components/building-upgrade-indicator';
 import buildingFieldStyles from 'app/(game)/(village-slug)/(village)/components/occupied-building-field.module.scss';
 import { useBuildingActions } from 'app/(game)/(village-slug)/(village)/hooks/use-building-actions';
-import { BuildingUpgradeIndicator } from 'app/(game)/(village-slug)/components/building-upgrade-indicator';
+import { useBuildingVirtualLevel } from 'app/(game)/(village-slug)/(village)/hooks/use-building-virtual-level';
+import { VillageMapContext } from 'app/(game)/(village-slug)/(village)/providers/village-map-context';
 import { Countdown } from 'app/(game)/(village-slug)/components/countdown';
-import { useCurrentVillage } from 'app/(game)/(village-slug)/hooks/current-village/use-current-village';
-import { useMediaQuery } from 'app/(game)/(village-slug)/hooks/dom/use-media-query';
-import { useBookmarks } from 'app/(game)/(village-slug)/hooks/use-bookmarks';
-import { useBuildingUpgradeStatus } from 'app/(game)/(village-slug)/hooks/use-building-level-change-status';
-import { usePreferences } from 'app/(game)/(village-slug)/hooks/use-preferences';
-import {
-  BuildingUpgradeStatusContext,
-  BuildingUpgradeStatusContextProvider,
-} from 'app/(game)/(village-slug)/providers/building-upgrade-status-provider';
-import { CurrentVillageBuildingQueueContext } from 'app/(game)/(village-slug)/providers/current-village-building-queue-provider';
+import { useBuildingConstructionStatus } from 'app/(game)/(village-slug)/hooks/use-building-construction-error-bag';
+import { BuildingUpgradeStatusContext } from 'app/(game)/(village-slug)/providers/building-upgrade-status-provider';
+import { CurrentVillageBuildingQueueContext } from 'app/(game)/(village-slug)/providers/current-village-building-queue-context';
 import { useLongPress } from 'app/hooks/use-long-press';
 
-const transformBuildingIdIntoCssClass = (
-  buildingId: Building['id'],
-): string => {
-  return buildingId.toLowerCase().replaceAll('_', '-');
-};
+const occupiedBuildingFieldClassName =
+  'relative size-10 lg:size-16 rounded-full non-selectable focus:outline-hidden focus:ring-2 focus:ring-black/80 dark:focus:ring-ring border border-black/10 dark:border-border';
 
-type DynamicCellClassesArgs = {
-  buildingField: BuildingFieldType;
+const villageBuildingFieldClassName =
+  'relative block size-10 lg:size-16 rounded-xs non-selectable focus:outline-hidden focus-visible:ring-2 focus-visible:ring-black/80 dark:focus-visible:ring-ring';
+
+const noop = () => {};
+
+type ResourceBuildingClassesArgs = {
+  buildingFieldId: BuildingFieldType['id'];
   resourceFieldComposition: ResourceFieldComposition;
 };
 
-const dynamicCellClasses = ({
-  buildingField,
+const getResourceBuildingClasses = ({
+  buildingFieldId,
   resourceFieldComposition,
-}: DynamicCellClassesArgs): string => {
-  const { buildingId, id } = buildingField;
-  const isResourceField = id <= 18;
-
-  if (isResourceField) {
-    return clsx(
-      buildingFieldStyles.building,
-      `rfc-${resourceFieldComposition}`,
-      buildingFieldStyles['building-resource'],
-      buildingFieldStyles[`building-resource-${id}`],
-    );
-  }
-
-  const buildingIdToCssClass = transformBuildingIdIntoCssClass(buildingId);
-
+}: ResourceBuildingClassesArgs): string => {
   return clsx(
     buildingFieldStyles.building,
-    buildingFieldStyles[`building-village-${buildingIdToCssClass}`],
+    `rfc-${resourceFieldComposition}`,
+    buildingFieldStyles['building-resource'],
+    buildingFieldStyles[`building-resource-${buildingFieldId}`],
+  );
+};
+
+const getVillageBuildingClasses = (buildingId: Building['id']): string => {
+  return clsx(
+    buildingFieldStyles.building,
+    buildingFieldStyles[
+      `building-village-${buildingId.toLowerCase().replaceAll('_', '-')}`
+    ],
   );
 };
 
@@ -66,24 +60,19 @@ export const OccupiedBuildingField = ({
   buildingField,
 }: OccupiedBuildingFieldProps) => {
   const { t } = useTranslation();
-  const { currentVillageBuildingEvents } = use(
-    CurrentVillageBuildingQueueContext,
-  );
-  const { bookmarks } = useBookmarks();
+  const { bookmarks } = use(VillageMapContext);
+  const { buildingEventByFieldId } = use(CurrentVillageBuildingQueueContext);
 
-  const { id: buildingFieldId, buildingId, level } = buildingField;
+  const { id: buildingFieldId, buildingId } = buildingField;
+  const { virtualLevel } = useBuildingVirtualLevel(buildingFieldId);
 
   const buildingDefinition = getBuildingDefinition(buildingId);
-  const isMaxLevel = buildingDefinition.maxLevel === level;
+  const isMaxLevel = buildingDefinition.maxLevel === virtualLevel;
 
   const tab = bookmarks[buildingId] ?? 'default';
 
-  const currentBuildingFieldBuildingEvent = useMemo(() => {
-    return currentVillageBuildingEvents.find(
-      ({ buildingFieldId: buildingEventBuildingFieldId }) =>
-        buildingEventBuildingFieldId === buildingFieldId,
-    );
-  }, [currentVillageBuildingEvents, buildingFieldId]);
+  const currentBuildingFieldBuildingEvent =
+    buildingEventByFieldId.get(buildingFieldId);
 
   const content = (
     <OccupiedBuildingFieldContent
@@ -95,8 +84,9 @@ export const OccupiedBuildingField = ({
 
   if (isMaxLevel) {
     const status = {
+      canUpgrade: false,
       variant: 'blue' as const,
-      errors: [t("Building can't be upgraded any further")],
+      errorBag: [t("Building can't be upgraded any further")],
     };
 
     return (
@@ -109,6 +99,7 @@ export const OccupiedBuildingField = ({
   return (
     <OccupiedBuildingFieldActive
       buildingField={buildingField}
+      virtualLevel={virtualLevel}
       currentBuildingFieldBuildingEvent={currentBuildingFieldBuildingEvent}
       tab={tab}
     />
@@ -117,24 +108,35 @@ export const OccupiedBuildingField = ({
 
 type OccupiedBuildingFieldActiveProps = {
   buildingField: BuildingFieldType;
+  virtualLevel: number;
   currentBuildingFieldBuildingEvent: BuildingEvent | undefined;
   tab: string;
 };
 
 const OccupiedBuildingFieldActive = ({
   buildingField,
+  virtualLevel,
   currentBuildingFieldBuildingEvent,
   tab,
 }: OccupiedBuildingFieldActiveProps) => {
-  const isWiderThanLg = useMediaQuery('(min-width: 1024px)');
-
+  const { isWiderThanLg } = use(VillageMapContext);
   const { id: buildingFieldId, buildingId } = buildingField;
 
-  const { errors } = useBuildingUpgradeStatus(buildingField);
+  const { canUpgrade, variant } = useBuildingConstructionStatus(
+    buildingId,
+    virtualLevel,
+    buildingFieldId,
+  );
+
+  const status = useMemo(
+    () => ({ canUpgrade, errorBag: [], variant }),
+    [canUpgrade, variant],
+  );
+
   const { upgradeBuilding } = useBuildingActions(buildingId, buildingFieldId);
 
   const onLongPress = () => {
-    if (errors.length === 0) {
+    if (canUpgrade) {
       upgradeBuilding();
     }
   };
@@ -144,11 +146,12 @@ const OccupiedBuildingFieldActive = ({
   const [isHovered, setIsHovered] = useState<boolean>(false);
 
   return (
-    <BuildingUpgradeStatusContextProvider buildingField={buildingField}>
+    <BuildingUpgradeStatusContext value={status}>
       <OccupiedBuildingFieldContent
         buildingField={buildingField}
         currentBuildingFieldBuildingEvent={currentBuildingFieldBuildingEvent}
         tab={tab}
+        onUpgrade={upgradeBuilding}
         {...(isWiderThanLg
           ? {
               onMouseEnter: () => setIsHovered(true),
@@ -163,7 +166,7 @@ const OccupiedBuildingFieldActive = ({
           : longPress)}
         isHovered={isHovered}
       />
-    </BuildingUpgradeStatusContextProvider>
+    </BuildingUpgradeStatusContext>
   );
 };
 
@@ -172,6 +175,7 @@ type OccupiedBuildingFieldContentProps = {
   currentBuildingFieldBuildingEvent: BuildingEvent | undefined;
   tab: string;
   isHovered?: boolean;
+  onUpgrade?: () => void;
 } & AnchorHTMLAttributes<HTMLAnchorElement>;
 
 const OccupiedBuildingFieldContent = ({
@@ -179,14 +183,13 @@ const OccupiedBuildingFieldContent = ({
   currentBuildingFieldBuildingEvent,
   tab,
   isHovered = false,
+  onUpgrade = noop,
   ...props
 }: OccupiedBuildingFieldContentProps) => {
   const { t } = useTranslation();
-  const { currentVillage } = useCurrentVillage();
-  const { preferences } = usePreferences();
+  const { currentVillage, shouldShowBuildingNames } = use(VillageMapContext);
 
   const { id: buildingFieldId, buildingId } = buildingField;
-  const { shouldShowBuildingNames } = preferences;
   const hasEvent = !!currentBuildingFieldBuildingEvent;
 
   return (
@@ -197,15 +200,21 @@ const OccupiedBuildingFieldContent = ({
       }}
       aria-label={t(`BUILDINGS.${buildingId}.NAME`)}
       data-building-field-id={buildingFieldId}
-      tabIndex={0}
       className={clsx(
-        dynamicCellClasses({
-          buildingField,
-          resourceFieldComposition: currentVillage.resourceFieldComposition,
-        }),
-        'relative block size-10 lg:size-16 select-none focus:outline-hidden',
+        buildingFieldId <= 18
+          ? [
+              getResourceBuildingClasses({
+                buildingFieldId,
+                resourceFieldComposition:
+                  currentVillage.resourceFieldComposition,
+              }),
+              occupiedBuildingFieldClassName,
+            ]
+          : [
+              getVillageBuildingClasses(buildingId),
+              villageBuildingFieldClassName,
+            ],
       )}
-      style={{ backgroundColor: 'transparent' }}
       {...props}
     >
       <div className="absolute bottom-0 right-0 z-10">
@@ -213,6 +222,7 @@ const OccupiedBuildingFieldContent = ({
           isHovered={isHovered}
           buildingField={buildingField}
           buildingEvent={currentBuildingFieldBuildingEvent}
+          onUpgrade={onUpgrade}
         />
       </div>
       {shouldShowBuildingNames && (

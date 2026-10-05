@@ -8,22 +8,26 @@ import {
 
 export default [
   // Public routes
-  ...prefix(':locale?', [
-    layout('(public)/layout.tsx', [
-      index('(public)/(index)/page.tsx'),
-      route('get-involved', '(public)/(get-involved)/page.tsx'),
-      route(
-        'frequently-asked-questions',
-        '(public)/(frequently-asked-questions)/page.tsx',
-      ),
-      route('latest-updates', '(public)/(latest-updates)/page.tsx'),
-      ...prefix('game-worlds', [
-        index('(public)/(game-worlds)/(index)/page.tsx'),
-        route('create', '(public)/(game-worlds)/(create)/page.tsx'),
-        route('import', '(public)/(game-worlds)/(import)/page.tsx'),
-      ]),
-      route('*', '(public)/(not-found)/page.tsx'),
+  layout('(public)/layout.tsx', [
+    index('(public)/(index)/page.tsx'),
+    route('get-involved', '(public)/(get-involved)/page.tsx'),
+    route(
+      'frequently-asked-questions',
+      '(public)/(frequently-asked-questions)/page.tsx',
+    ),
+    route('latest-updates', '(public)/(latest-updates)/page.tsx'),
+    ...prefix('game-worlds', [
+      index('(public)/(game-worlds)/(index)/page.tsx'),
+      route('create', '(public)/(game-worlds)/(create)/page.tsx'),
+      route('import', '(public)/(game-worlds)/(import)/page.tsx'),
     ]),
+    // Design system
+    ...prefix('design-system', [
+      ...prefix('icons', [index('(design-system)/(icons)/page.tsx')]),
+    ]),
+    route('*', '(public)/(not-found)/page.tsx', {
+      id: 'public-not-found-page',
+    }),
   ]),
   // Game routes
   ...prefix('game', [
@@ -56,10 +60,6 @@ export default [
                   id: 'village-building-field-id-page',
                 },
               ),
-              route(
-                'production-overview',
-                '(game)/(village-slug)/(production-overview)/page.tsx',
-              ),
               route('hero', '(game)/(village-slug)/(hero)/page.tsx'),
               route(
                 'preferences',
@@ -82,6 +82,10 @@ export default [
                 'oasis-bonus-finder',
                 '(game)/(village-slug)/(oasis-bonus-finder)/page.tsx',
               ),
+              route(
+                'oasis-animal-finder',
+                '(game)/(village-slug)/(oasis-animal-finder)/page.tsx',
+              ),
               ...prefix('players', [
                 index('(game)/(village-slug)/(players)/page.tsx'),
                 route(
@@ -95,5 +99,4 @@ export default [
       ]),
     ]),
   ]),
-  route('__spa-preload', '(internal)/(spa-preload)/page.tsx'),
 ] satisfies RouteConfigEntry[];

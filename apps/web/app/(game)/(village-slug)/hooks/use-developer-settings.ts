@@ -1,19 +1,23 @@
 import { useMutation, useSuspenseQuery } from '@tanstack/react-query';
 import { use } from 'react';
 import type { DeveloperSettings } from '@pillage-first/types/models/developer-settings';
-import { developerSettingsSchema } from '@pillage-first/types/models/developer-settings';
 import type { HeroItem } from '@pillage-first/types/models/hero-item';
 import type { Resource } from '@pillage-first/types/models/resource';
+import { useCurrentVillage } from 'app/(game)/(village-slug)/hooks/current-village/use-current-village';
+import { useHero } from 'app/(game)/(village-slug)/hooks/use-hero';
+import { VillageSlugContext } from 'app/(game)/(village-slug)/providers/village-slug-context';
 import {
+  currentVillageCacheKey,
   developerSettingsCacheKey,
+  effectsCacheKey,
   heroCacheKey,
   heroInventoryCacheKey,
   heroLoadoutCacheKey,
-  playerVillagesCacheKey,
-} from 'app/(game)/(village-slug)/constants/query-keys';
-import { useHero } from 'app/(game)/(village-slug)/hooks/use-hero.ts';
-import { VillageSlugContext } from 'app/(game)/(village-slug)/providers/village-slug-provider.tsx';
-import { ApiContext } from 'app/(game)/providers/api-provider';
+  loyaltyCacheKey,
+  villageTroopsCacheKey,
+} from 'app/(game)/constants/query-keys';
+import { ApiContext } from 'app/(game)/providers/api-context';
+import { invalidateQueries } from 'app/utils/react-query';
 
 type UpdateDeveloperSettingArgs = {
   developerSettingName: keyof DeveloperSettings;
@@ -32,17 +36,20 @@ type SpawnHeroItemArgs = {
   amount: number;
 };
 
+type AdjustLoyaltyArgs = { amount: number };
+
 export const useDeveloperSettings = () => {
-  const { fetcher } = use(ApiContext);
+  const { apiClient } = use(ApiContext);
   const { villageSlug } = use(VillageSlugContext);
   const { hero } = useHero();
+  const { currentVillage } = useCurrentVillage();
 
   const { data: developerSettings } = useSuspenseQuery({
     queryKey: [developerSettingsCacheKey],
     queryFn: async () => {
-      const { data } = await fetcher('/developer-settings');
+      const { data } = await apiClient.get('/developer-settings');
 
-      return developerSettingsSchema.parse(data);
+      return data;
     },
     staleTime: Number.POSITIVE_INFINITY,
     gcTime: Number.POSITIVE_INFINITY,
@@ -54,17 +61,17 @@ export const useDeveloperSettings = () => {
     UpdateDeveloperSettingArgs
   >({
     mutationFn: async ({ developerSettingName, value }) => {
-      await fetcher(`/developer-settings/${developerSettingName}`, {
-        method: 'PATCH',
+      await apiClient.patch('/developer-settings/:developerSettingName', {
+        path: {
+          developerSettingName,
+        },
         body: {
           value,
         },
       });
     },
     onSuccess: async (_, _args, _onMutateResult, context) => {
-      await context.client.invalidateQueries({
-        queryKey: [developerSettingsCacheKey],
-      });
+      await invalidateQueries(context, [[developerSettingsCacheKey]]);
     },
   });
 
@@ -74,8 +81,10 @@ export const useDeveloperSettings = () => {
     UpdateVillageResourcesArgs
   >({
     mutationFn: async ({ villageId, resource, amount, direction }) => {
-      await fetcher(`/developer-settings/${villageId}/resources`, {
-        method: 'PATCH',
+      await apiClient.patch('/developer-settings/:villageId/resources', {
+        path: {
+          villageId,
+        },
         body: {
           resource,
           amount,
@@ -84,17 +93,17 @@ export const useDeveloperSettings = () => {
       });
     },
     onSuccess: async (_, _args, _onMutateResult, context) => {
-      await context.client.invalidateQueries({
-        queryKey: [playerVillagesCacheKey, villageSlug],
-      });
+      await invalidateQueries(context, [[currentVillageCacheKey, villageSlug]]);
     },
   });
 
   const { mutate: spawnHeroItem } = useMutation<void, Error, SpawnHeroItemArgs>(
     {
       mutationFn: async ({ itemId, amount }) => {
-        await fetcher(`/developer-settings/${hero.id}/spawn-item`, {
-          method: 'PATCH',
+        await apiClient.patch('/developer-settings/:heroId/spawn-item', {
+          path: {
+            heroId: hero.id,
+          },
           body: {
             itemId,
             amount,
@@ -102,11 +111,9 @@ export const useDeveloperSettings = () => {
         });
       },
       onSuccess: async (_, _args, _onMutateResult, context) => {
-        await Promise.all([
-          context.client.invalidateQueries({ queryKey: [heroLoadoutCacheKey] }),
-          context.client.invalidateQueries({
-            queryKey: [heroInventoryCacheKey],
-          }),
+        await invalidateQueries(context, [
+          [heroLoadoutCacheKey],
+          [heroInventoryCacheKey],
         ]);
       },
     },
@@ -114,32 +121,63 @@ export const useDeveloperSettings = () => {
 
   const { mutate: incrementHeroAdventurePoints } = useMutation<void>({
     mutationFn: async () => {
-      await fetcher(
-        `/developer-settings/${hero.id}/increment-adventure-points`,
+      await apiClient.patch(
+        '/developer-settings/:heroId/increment-adventure-points',
         {
-          method: 'PATCH',
+          path: {
+            heroId: hero.id,
+          },
         },
       );
     },
     onSuccess: async (_, _args, _onMutateResult, context) => {
-      await context.client.invalidateQueries({
-        queryKey: ['adventure-points'],
-      });
+      await invalidateQueries(context, [['adventure-points']]);
     },
   });
 
   const { mutate: levelUpHero } = useMutation<void>({
     mutationFn: async () => {
-      await fetcher(`/developer-settings/${hero.id}/level-up`, {
-        method: 'PATCH',
+      await apiClient.patch('/developer-settings/:heroId/level-up', {
+        path: {
+          heroId: hero.id,
+        },
       });
     },
     onSuccess: async (_, _args, _onMutateResult, context) => {
-      await context.client.invalidateQueries({
-        queryKey: [heroCacheKey],
-      });
+      await invalidateQueries(context, [[heroCacheKey]]);
     },
   });
+
+  const { mutate: killHero } = useMutation<void>({
+    mutationFn: async () => {
+      await apiClient.patch('/developer-settings/:heroId/kill', {
+        path: {
+          heroId: hero.id,
+        },
+      });
+    },
+    onSuccess: async (_, _args, _onMutateResult, context) => {
+      await invalidateQueries(context, [
+        [heroCacheKey],
+        [villageTroopsCacheKey, currentVillage.tileId],
+        [effectsCacheKey, currentVillage.tileId],
+      ]);
+    },
+  });
+
+  const { mutate: adjustLoyalty } = useMutation<void, Error, AdjustLoyaltyArgs>(
+    {
+      mutationFn: async ({ amount }) => {
+        await apiClient.patch('/developer-settings/:tileId/adjustLoyalty', {
+          path: { tileId: currentVillage.tileId },
+          body: { amount },
+        });
+      },
+      onSuccess: async (_, _args, _onMutateResult, context) => {
+        await invalidateQueries(context, [[loyaltyCacheKey]]);
+      },
+    },
+  );
 
   return {
     developerSettings,
@@ -148,5 +186,7 @@ export const useDeveloperSettings = () => {
     spawnHeroItem,
     levelUpHero,
     incrementHeroAdventurePoints,
+    killHero,
+    adjustLoyalty,
   };
 };

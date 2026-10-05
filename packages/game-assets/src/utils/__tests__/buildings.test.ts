@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest';
 import {
   calculateBuildingCancellationRefundForLevel,
   calculateBuildingCostForLevel,
+  calculateBuildingDestructionDuration,
   calculateBuildingDurationForLevel,
   calculateBuildingEffectValues,
   calculateTotalCulturePointsForLevel,
@@ -12,31 +13,31 @@ import {
 
 describe('buildings utils', () => {
   describe(calculateBuildingEffectValues, () => {
-    test('romal wall effect values', () => {
+    test('roman wall effect values', () => {
       const building = getBuildingDefinition('ROMAN_WALL');
-      const result = calculateBuildingEffectValues(building, 20);
+      const result = calculateBuildingEffectValues(building, 20, 'romans');
       expect(
         result.some(
           (e) =>
             e.effectId === 'infantryDefence' && e.currentLevelValue === 200,
         ),
-      ).toBeTruthy();
+      ).toBe(true);
     });
 
     test('bakery wheat production bonus', () => {
       const building = getBuildingDefinition('BAKERY');
-      const result = calculateBuildingEffectValues(building, 5);
+      const result = calculateBuildingEffectValues(building, 5, 'romans');
       expect(
         result.some(
           (e) =>
             e.effectId === 'wheatProduction' && e.currentLevelValue === 1.25,
         ),
-      ).toBeTruthy();
+      ).toBe(true);
     });
 
     test('clay pit clay production', () => {
       const building = getBuildingDefinition('CLAY_PIT');
-      const result = calculateBuildingEffectValues(building, 20);
+      const result = calculateBuildingEffectValues(building, 20, 'romans');
       expect(
         result.find((e) => e.effectId === 'clayProduction')!.currentLevelValue,
       ).toBe(3430);
@@ -44,22 +45,60 @@ describe('buildings utils', () => {
 
     test('roman wall values are increasing', () => {
       const building = getBuildingDefinition('ROMAN_WALL');
-      const result = calculateBuildingEffectValues(building, 10);
+      const result = calculateBuildingEffectValues(building, 10, 'romans');
       expect(
         result.find((e) => e.effectId === 'infantryDefence')!
           .areEffectValuesRising,
-      ).toBeTruthy();
+      ).toBe(true);
     });
 
     test('bakery wheat production bonus values are increasing', () => {
       const building = getBuildingDefinition('BAKERY');
-      const result = calculateBuildingEffectValues(building, 3);
+      const result = calculateBuildingEffectValues(building, 3, 'romans');
       expect(
         result.find(
           (e) =>
             e.effectId === 'wheatProduction' && e.currentLevelValue === 1.15,
         )!.areEffectValuesRising,
-      ).toBeTruthy();
+      ).toBe(true);
+    });
+
+    test('trade office merchant capacity is higher for romans', () => {
+      const building = getBuildingDefinition('TRADE_OFFICE');
+
+      const romanEffect = calculateBuildingEffectValues(
+        building,
+        20,
+        'romans',
+      ).find((effect) => effect.effectId === 'merchantCapacity')!;
+
+      const gaulEffect = calculateBuildingEffectValues(
+        building,
+        20,
+        'gauls',
+      ).find((effect) => effect.effectId === 'merchantCapacity')!;
+
+      expect(romanEffect.currentLevelValue).toBe(5);
+      expect(gaulEffect.currentLevelValue).toBe(3);
+    });
+
+    test('cranny capacity is higher for gauls', () => {
+      const building = getBuildingDefinition('CRANNY');
+
+      const gaulEffect = calculateBuildingEffectValues(
+        building,
+        10,
+        'gauls',
+      ).find((effect) => effect.effectId === 'crannyCapacity')!;
+
+      const romanEffect = calculateBuildingEffectValues(
+        building,
+        10,
+        'romans',
+      ).find((effect) => effect.effectId === 'crannyCapacity')!;
+
+      expect(gaulEffect.currentLevelValue).toBe(2000);
+      expect(romanEffect.currentLevelValue).toBe(1000);
     });
   });
 
@@ -67,14 +106,14 @@ describe('buildings utils', () => {
     test('main building level 1', () => {
       const { isMaxLevel, nextLevelPopulation, nextLevelResourceCost } =
         getBuildingDataForLevel('MAIN_BUILDING', 1);
-      expect(isMaxLevel).toBeFalsy();
+      expect(isMaxLevel).toBe(false);
       expect(nextLevelPopulation).toBe(3);
       expect(nextLevelResourceCost).toStrictEqual([90, 55, 80, 30]);
     });
 
     test('main building level 20', () => {
       const { isMaxLevel } = getBuildingDataForLevel('MAIN_BUILDING', 20);
-      expect(isMaxLevel).toBeTruthy();
+      expect(isMaxLevel).toBe(true);
     });
   });
 
@@ -86,12 +125,57 @@ describe('buildings utils', () => {
   });
 
   describe(calculateBuildingCancellationRefundForLevel, () => {
-    test('should calculate correct refund amount', () => {
-      const refund = calculateBuildingCancellationRefundForLevel(
+    test('should calculate 95% refund for <= 5% completion', () => {
+      const refundAt0 = calculateBuildingCancellationRefundForLevel(
         'MAIN_BUILDING',
         1,
+        0,
       );
-      expect(refund).toStrictEqual([56, 32, 48, 16]);
+      // Cost is [70, 40, 60, 20]. 95% is [66.5, 38, 57, 19]. trunc -> [66, 38, 57, 19]
+      expect(refundAt0).toStrictEqual([66, 38, 57, 19]);
+
+      const refundAt5 = calculateBuildingCancellationRefundForLevel(
+        'MAIN_BUILDING',
+        1,
+        0.05,
+      );
+      expect(refundAt5).toStrictEqual([66, 38, 57, 19]);
+    });
+
+    test('should calculate proportional refund for > 5% completion', () => {
+      // At 50% completion:
+      // refundPercentage = 0.95 - (0.5 - 0.05) / (1 - 0.05)
+      // refundPercentage = 0.95 - 0.45 / 0.95 = 0.95 - 0.47368 = 0.47632
+      const refundAt50 = calculateBuildingCancellationRefundForLevel(
+        'MAIN_BUILDING',
+        1,
+        0.5,
+      );
+      // 70 * 0.47632 = 33.34 -> 33
+      // 40 * 0.47632 = 19.05 -> 19
+      // 60 * 0.47632 = 28.57 -> 28
+      // 20 * 0.47632 = 9.52 -> 9
+      expect(refundAt50).toStrictEqual([33, 19, 28, 9]);
+    });
+
+    test('should cap refund at 40%', () => {
+      const refundAt99 = calculateBuildingCancellationRefundForLevel(
+        'MAIN_BUILDING',
+        1,
+        0.99,
+      );
+      // 70 * 0.4 = 28
+      // 40 * 0.4 = 16
+      // 60 * 0.4 = 24
+      // 20 * 0.4 = 8
+      expect(refundAt99).toStrictEqual([28, 16, 24, 8]);
+
+      const refundAt100 = calculateBuildingCancellationRefundForLevel(
+        'MAIN_BUILDING',
+        1,
+        1,
+      );
+      expect(refundAt100).toStrictEqual([28, 16, 24, 8]);
     });
   });
 
@@ -99,6 +183,13 @@ describe('buildings utils', () => {
     test('should calculate correct duration for level 1', () => {
       const duration = calculateBuildingDurationForLevel('MAIN_BUILDING', 1);
       expect(duration).toBe(2_000_000);
+    });
+  });
+
+  describe(calculateBuildingDestructionDuration, () => {
+    test('should calculate demolition duration based on level and speed', () => {
+      const duration = calculateBuildingDestructionDuration(6, 2);
+      expect(duration).toBe(900_000);
     });
   });
 

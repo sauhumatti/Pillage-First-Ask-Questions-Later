@@ -1,3 +1,4 @@
+import { faro } from '@grafana/faro-web-sdk';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { memo, Suspense, use, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -9,18 +10,56 @@ import {
   type ShouldRevalidateFunction,
 } from 'react-router';
 import type { ToasterProps } from 'sonner';
+import type { Server } from '@pillage-first/types/models/server';
 import type { Route } from '@react-router/types/app/(game)/+types/layout';
 import { useMediaQuery } from 'app/(game)/(village-slug)/hooks/dom/use-media-query';
 import { Notifier } from 'app/(game)/components/notifier';
 import { serverExistAndLockMiddleware } from 'app/(game)/middleware/server-already-open-middleware';
-import { ApiProvider } from 'app/(game)/providers/api-provider';
-import { HeadLinks } from 'app/components/head-links.tsx';
-import { Spinner } from 'app/components/ui/spinner';
+import {
+  ApiProvider,
+  ApiProviderFallback,
+} from 'app/(game)/providers/api-provider';
+import { availableServerCacheKey } from 'app/(public)/constants/query-keys';
+import { HeadLinks } from 'app/components/head-links';
 import { Toaster } from 'app/components/ui/toaster';
+import { pushGameWorldOpened } from 'app/instrumentation/product-events';
 import { loadAppTranslations } from 'app/localization/loaders/app';
-import { CookieContext, CookieProvider } from 'app/providers/cookie-provider';
+import { CookieContext } from 'app/providers/cookie-context';
+import { CookieProvider } from 'app/providers/cookie-provider';
 
-export { ErrorBoundary } from 'app/(game)/error-boundary.tsx';
+export { ErrorBoundary } from 'app/(game)/error-boundary';
+
+const addGameWorldAttributesToFaro = (serverSlug: string): void => {
+  const getGameWorldListing = (): Server[] => {
+    try {
+      return JSON.parse(
+        window.localStorage.getItem(availableServerCacheKey) ?? '[]',
+      );
+    } catch {
+      return [];
+    }
+  };
+
+  const gameWorld = getGameWorldListing().find(({ slug }) => {
+    return slug === serverSlug;
+  });
+
+  if (!gameWorld) {
+    return;
+  }
+
+  pushGameWorldOpened(gameWorld);
+
+  const session = faro.api.getSession();
+
+  faro.api.setSession({
+    ...session,
+    attributes: {
+      ...session?.attributes,
+      gameWorld: JSON.stringify(gameWorld),
+    },
+  });
+};
 
 export const clientLoader = async ({
   context,
@@ -38,6 +77,8 @@ export const clientLoader = async ({
   const { sessionContext } = sessionModule;
   const { sessionId } = context.get(sessionContext);
 
+  addGameWorldAttributesToFaro(serverSlug);
+
   return {
     sessionId,
     serverSlug,
@@ -52,14 +93,6 @@ export const clientMiddleware: Route.ClientMiddlewareFunction[] = [
   serverExistAndLockMiddleware,
 ];
 
-const LayoutFallback = () => {
-  return (
-    <div className="h-dvh w-full flex items-center justify-center bg-background!">
-      <Spinner size="large" />
-    </div>
-  );
-};
-
 const LayoutContent = memo<Route.ComponentProps>(
   ({ params, loaderData }) => {
     const { serverSlug } = params;
@@ -69,10 +102,11 @@ const LayoutContent = memo<Route.ComponentProps>(
     const { uiColorScheme } = use(CookieContext);
     const isWiderThanLg = useMediaQuery('(min-width: 1024px)');
 
-    const [queryClient] = useState<QueryClient>(
-      new QueryClient({
+    const [queryClient] = useState<QueryClient>(() => {
+      return new QueryClient({
         defaultOptions: {
           queries: {
+            gcTime: Number.POSITIVE_INFINITY,
             networkMode: 'always',
             retry: false,
           },
@@ -81,39 +115,47 @@ const LayoutContent = memo<Route.ComponentProps>(
             retry: false,
           },
         },
-      }),
-    );
+      });
+    });
 
     const toasterPosition: ToasterProps['position'] = isWiderThanLg
       ? 'bottom-right'
       : 'top-right';
 
     useEffect(() => {
-      const { promise, resolve } = Promise.withResolvers();
+      let release: (() => void) | undefined;
 
-      navigator.locks.request(`${serverSlug}:${sessionId}`, () => promise);
+      navigator.locks.request(
+        `${serverSlug}:${sessionId}`,
+        () =>
+          new Promise<void>((resolve) => {
+            release = resolve;
+          }),
+      );
 
       return () => {
-        resolve(null);
+        release?.();
       };
     }, [serverSlug, sessionId]);
 
     return (
       <html
         lang={i18n.language}
-        className={uiColorScheme === 'dark' ? 'dark' : ''}
+        className={uiColorScheme}
       >
         <head>
           <HeadLinks />
           <Links />
         </head>
-        <body className="bg-background text-foreground transition-colors duration-300">
+        <body className="bg-background text-foreground transition-colors">
           <QueryClientProvider client={queryClient}>
-            <Suspense fallback={<LayoutFallback />}>
-              <ApiProvider serverSlug={serverSlug}>
-                <Outlet />
-                <Notifier serverSlug={serverSlug} />
-              </ApiProvider>
+            <Suspense fallback={<ApiProviderFallback />}>
+              <div className="api-provider-splash-content">
+                <ApiProvider serverSlug={serverSlug}>
+                  <Outlet />
+                  <Notifier serverSlug={serverSlug} />
+                </ApiProvider>
+              </div>
             </Suspense>
             <Toaster
               position={toasterPosition}

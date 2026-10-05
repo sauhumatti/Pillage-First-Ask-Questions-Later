@@ -1,11 +1,9 @@
 import { clsx } from 'clsx';
-import { memo } from 'react';
-import { areEqual, type GridChildComponentProps } from 'react-window';
+import type { CellComponentProps } from 'react-window';
 import type { MapFilters } from '@pillage-first/types/models/map-filters';
 import type { MapMarker } from '@pillage-first/types/models/map-marker';
 import type { Preferences } from '@pillage-first/types/models/preferences';
 import { decodeGraphicsProperty } from '@pillage-first/utils/map';
-import { TreasureIcon } from 'app/(game)/(village-slug)/(map)/components/treasure-icon';
 import { BorderIndicator } from 'app/(game)/(village-slug)/components/border-indicator';
 import {
   BORDER_TILES_OASIS_VARIANTS,
@@ -13,6 +11,7 @@ import {
 } from 'app/(game)/(village-slug)/hooks/use-map';
 import type { useReputations } from 'app/(game)/(village-slug)/hooks/use-reputations';
 import { Icon } from 'app/components/icon';
+import { getOasisBonusIconType } from 'app/components/icons/utils/icons';
 import cellStyles from './cell.module.scss';
 
 type Tile = ReturnType<typeof useMap>['map'][0];
@@ -24,7 +23,11 @@ type CellBaseProps = {
   magnification: number;
   preferences: Preferences;
   mapMarkers: MapMarker[];
-  createMapMarker: (args: { tileId: number }) => void;
+  createMapMarker: (args: {
+    tileId: number;
+    description: string;
+    color: MapMarker['color'];
+  }) => void;
   deleteMapMarker: (args: { tileId: number }) => void;
   onClick: (tileId: number) => void;
   getReputation: ReturnType<typeof useReputations>['getReputation'];
@@ -38,22 +41,26 @@ type CellIconsProps = CellBaseProps & {
 
 const CellIcons = (props: CellIconsProps) => {
   const { tile, mapFilters, magnification, mapMarkers } = props;
-  const {
-    shouldShowTreasureIcons,
-    shouldShowOasisIcons,
-    shouldShowWheatFields,
-  } = mapFilters;
+  const { shouldShowOasisIcons, shouldShowWheatFields } = mapFilters;
 
-  const hasMarker = mapMarkers.some((marker) => marker.tileId === tile.id);
+  const marker = mapMarkers.find((marker) => marker.tileId === tile.id);
 
-  const classes = clsx(
+  const tileIconClasses = clsx(
     cellStyles['tile-icon'],
     cellStyles[`tile-icon-magnification-${magnification}`],
   );
 
-  if (hasMarker) {
+  const mapMarkerClasses = clsx(
+    'size-4 md:size-6',
+    cellStyles['map-marker'],
+    cellStyles[`map-marker-magnification-${magnification}`],
+  );
+
+  if (marker) {
     return (
       <Icon
+        className={mapMarkerClasses}
+        style={{ color: marker.color }}
         type="mapMarker"
         shouldShowTooltip={false}
       />
@@ -67,12 +74,11 @@ const CellIcons = (props: CellIconsProps) => {
   ) {
     return (
       <BorderIndicator
-        className={classes}
+        className={tileIconClasses}
         variant="yellow"
       >
         <Icon
           type="wheat"
-          className="scale-80"
           shouldShowTooltip={false}
         />
       </BorderIndicator>
@@ -82,7 +88,7 @@ const CellIcons = (props: CellIconsProps) => {
   if (
     shouldShowOasisIcons &&
     tile.type === 'oasis' &&
-    tile.attributes.isOccupiable
+    tile.attributes.bonusType !== null
   ) {
     const { oasisResource } = decodeGraphicsProperty(
       tile.attributes.oasisGraphics,
@@ -90,24 +96,14 @@ const CellIcons = (props: CellIconsProps) => {
 
     return (
       <BorderIndicator
-        className={clsx(classes, 'scale-80')}
+        className={tileIconClasses}
         variant={tile.owner !== null ? 'red' : 'green'}
       >
         <Icon
-          type={oasisResource}
-          className="scale-80"
+          type={getOasisBonusIconType(oasisResource, tile.attributes.bonusType)}
           shouldShowTooltip={false}
         />
       </BorderIndicator>
-    );
-  }
-
-  if (shouldShowTreasureIcons && tile.type === 'free' && tile.item !== null) {
-    return (
-      <TreasureIcon
-        className={classes}
-        itemId={tile.item.id}
-      />
     );
   }
 
@@ -157,63 +153,61 @@ const getTileClassNames = (
   return '';
 };
 
-type CellProps = GridChildComponentProps<CellBaseProps>;
+export const Cell = ({
+  ariaAttributes,
+  style,
+  rowIndex,
+  columnIndex,
+  map,
+  gridSize,
+  mapFilters,
+  magnification,
+  onClick,
+  getReputation,
+  ...cellProps
+}: CellComponentProps<CellBaseProps>) => {
+  const tileIndex = gridSize * rowIndex + columnIndex;
+  const tileId = tileIndex + 1;
 
-export const Cell = memo<CellProps>(
-  ({ data, style, rowIndex, columnIndex }) => {
-    const { map, gridSize, mapFilters, magnification, onClick, getReputation } =
-      data;
+  const tile = map[tileIndex];
+  const isBorderTile =
+    tile.type === 'oasis' &&
+    tile.attributes.bonusType === null &&
+    BORDER_TILES_OASIS_VARIANTS.has(tile.attributes.oasisGraphics);
 
-    const tileIndex = gridSize * rowIndex + columnIndex;
-    const tileId = tileIndex + 1;
+  const className = isBorderTile
+    ? clsx(
+        cellStyles.tile,
+        cellStyles[`border-tile-${tile.attributes.oasisGraphics}`],
+      )
+    : getTileClassNames(
+        tile,
+        getReputation,
+        magnification,
+        mapFilters.shouldShowFactionReputation,
+      );
 
-    const tile = map[tileIndex];
-    const isBorderTile =
-      tile.type === 'oasis' &&
-      !tile.attributes.isOccupiable &&
-      BORDER_TILES_OASIS_VARIANTS.has(tile.attributes.oasisGraphics);
-
-    // const onContextMenu = (event: ReactMouseEvent) => {
-    //   event.preventDefault();
-    //
-    //   const hasMarker = mapMarkers.some((marker) => marker.tileId === tileId);
-    //
-    //   if (hasMarker) {
-    //     deleteMapMarker({ tileId });
-    //   } else {
-    //     createMapMarker({ tileId });
-    //   }
-    // };
-
-    const className = isBorderTile
-      ? clsx(
-          cellStyles.tile,
-          cellStyles[`border-tile-${tile.attributes.oasisGraphics}`],
-        )
-      : getTileClassNames(
-          tile,
-          getReputation,
-          magnification,
-          mapFilters.shouldShowFactionReputation,
-        );
-
-    return (
-      <button
-        onClick={() => onClick(tileId)}
-        // onContextMenu={onContextMenu}
-        type="button"
-        style={style}
-        data-tile-id={tileId}
-        className={className}
-      >
-        {!isBorderTile && (
-          <CellIcons
-            tile={tile}
-            {...data}
-          />
-        )}
-      </button>
-    );
-  },
-  areEqual,
-);
+  return (
+    <button
+      {...ariaAttributes}
+      onClick={() => onClick(tileId)}
+      type="button"
+      style={style}
+      data-tile-id={tileId}
+      className={className}
+    >
+      {!isBorderTile && (
+        <CellIcons
+          tile={tile}
+          map={map}
+          gridSize={gridSize}
+          mapFilters={mapFilters}
+          magnification={magnification}
+          onClick={onClick}
+          getReputation={getReputation}
+          {...cellProps}
+        />
+      )}
+    </button>
+  );
+};

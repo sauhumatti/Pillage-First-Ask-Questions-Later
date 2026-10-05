@@ -1,19 +1,21 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
+import type { Player } from '@pillage-first/types/models/player';
 import { parseResourcesFromRFC } from '@pillage-first/utils/map';
 import type { Route } from '@react-router/types/app/(game)/(village-slug)/(players)/(...player-slug)/+types/page';
 import { usePlayer } from 'app/(game)/(village-slug)/(players)/(...player-slug)/hooks/use-player';
 import { usePlayerVillages } from 'app/(game)/(village-slug)/(players)/(...player-slug)/hooks/use-player-villages';
+import { OverflowContainer } from 'app/(game)/(village-slug)/components/building-layout';
 import { Resources } from 'app/(game)/(village-slug)/components/resources';
-import { Text } from 'app/components/text';
+import { InformationPopover } from 'app/(game)/components/information-popover';
+import { Icon } from 'app/components/icon';
 import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbSeparator,
-} from 'app/components/ui/breadcrumb';
+  getOasisBonusIconType,
+  getOasisBonusLabel,
+} from 'app/components/icons/utils/icons';
+import { PageContents } from 'app/components/page-contents';
+import { Text } from 'app/components/text';
 import {
   Table,
   TableBody,
@@ -23,16 +25,25 @@ import {
   TableRow,
 } from 'app/components/ui/table';
 
-const PlayerPage = ({ params }: Route.ComponentProps) => {
-  const { serverSlug, villageSlug, playerSlug } = params;
+type PlayerDetailsProps = {
+  player: Player;
+};
 
+const PlayerDetails = ({ player }: PlayerDetailsProps) => {
   const { t } = useTranslation();
-  const { player } = usePlayer(playerSlug);
   const { playerVillages } = usePlayerVillages(player.id);
 
-  const title = `${t('{{playerName}}', { playerName: player.name })} | Pillage First! - ${serverSlug} - ${villageSlug}`;
-
   const totalVillages = playerVillages.length;
+
+  const totalOccupiedOasis = useMemo<number>(() => {
+    let summedOasis = 0;
+
+    for (const { occupiedOasis } of playerVillages) {
+      summedOasis += occupiedOasis.length;
+    }
+
+    return summedOasis;
+  }, [playerVillages]);
 
   const totalPopulation = useMemo<number>(() => {
     let summedPopulation = 0;
@@ -44,32 +55,18 @@ const PlayerPage = ({ params }: Route.ComponentProps) => {
     return summedPopulation;
   }, [playerVillages]);
 
-  const sortedPlayerVillages = useMemo(() => {
-    return playerVillages.toSorted((prevVillage, nextVillage) => {
-      return nextVillage.population - prevVillage.population;
-    });
-  }, [playerVillages]);
-
   return (
     <>
-      <title>{title}</title>
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink to="../village">{t('Village')}</BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbLink to="../statistics">
-              {t('Statistics')}
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            {t('Player - {{playerSlug}}', { playerSlug })}
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
+      <InformationPopover
+        ariaLabel={t('{{playerName}}', { playerName: player.name })}
+        className="top-2 right-2"
+      >
+        <Text>
+          {t(
+            "Review the player's tribe, faction, population, village count and village list.",
+          )}
+        </Text>
+      </InformationPopover>
       <Text as="h1">{player.name}</Text>
 
       <table className="w-80">
@@ -113,6 +110,19 @@ const PlayerPage = ({ params }: Route.ComponentProps) => {
               className="p-1"
             >
               <Text className="text-left font-medium">
+                {t('Occupied oasis')}
+              </Text>
+            </th>
+            <td className="p-1">
+              <Text>{totalOccupiedOasis}</Text>
+            </td>
+          </tr>
+          <tr>
+            <th
+              scope="row"
+              className="p-1"
+            >
+              <Text className="text-left font-medium">
                 {t('Total population')}
               </Text>
             </th>
@@ -124,7 +134,8 @@ const PlayerPage = ({ params }: Route.ComponentProps) => {
       </table>
 
       <div className="flex flex-col justify-center gap-2">
-        <div className="overflow-x-scroll scrollbar-hidden">
+        <Text as="h2">{t('Villages')}</Text>
+        <OverflowContainer>
           <Table>
             <TableHeader>
               <TableRow>
@@ -140,14 +151,18 @@ const PlayerPage = ({ params }: Route.ComponentProps) => {
                 <TableHeaderCell>
                   <Text>{t('Resources')}</Text>
                 </TableHeaderCell>
+                <TableHeaderCell>
+                  <Text>{t('Occupied oasis')}</Text>
+                </TableHeaderCell>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sortedPlayerVillages.map(
+              {playerVillages.map(
                 ({
                   id,
                   name,
                   coordinates,
+                  occupiedOasis,
                   population,
                   resourceFieldComposition,
                 }) => (
@@ -175,23 +190,77 @@ const PlayerPage = ({ params }: Route.ComponentProps) => {
                     </TableCell>
                     <TableCell>
                       <Text>
-                        <Resources
-                          className="justify-center"
-                          iconClassName="size-4"
-                          resources={parseResourcesFromRFC(
-                            resourceFieldComposition,
-                          )}
-                        />
+                        <span className="inline-flex gap-2">
+                          <Resources
+                            className="justify-center"
+                            iconClassName="size-4"
+                            resources={parseResourcesFromRFC(
+                              resourceFieldComposition,
+                            )}
+                          />
+                        </span>
                       </Text>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        {occupiedOasis.map((oasis, index) => (
+                          <Text
+                            className="inline-flex items-center gap-2 whitespace-nowrap"
+                            key={oasis.id}
+                          >
+                            {index > 0 && <span>,</span>}
+                            <span className="inline-flex items-center gap-1">
+                              <Icon
+                                type={getOasisBonusIconType(
+                                  oasis.resource,
+                                  oasis.bonusType,
+                                )}
+                                className="flex size-5"
+                              />
+                              {getOasisBonusLabel(oasis.bonusType)}
+                            </span>
+                          </Text>
+                        ))}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ),
               )}
             </TableBody>
           </Table>
-        </div>
+        </OverflowContainer>
       </div>
     </>
+  );
+};
+
+const PlayerPage = ({ params }: Route.ComponentProps) => {
+  const { serverSlug, villageSlug, playerSlug } = params;
+
+  const { t } = useTranslation();
+  const { player } = usePlayer(playerSlug);
+
+  const title = player
+    ? `${t('{{playerName}}', { playerName: player.name })} | Pillage First! - ${serverSlug} - ${villageSlug}`
+    : `${t('Player not found')} | Pillage First! - ${serverSlug} - ${villageSlug}`;
+
+  if (!player) {
+    return (
+      <PageContents>
+        <title>{title}</title>
+        <div className="flex flex-col gap-2">
+          <Text as="h1">{t('Player not found')}</Text>
+          <Text>{t('This player could not be found.')}</Text>
+        </div>
+      </PageContents>
+    );
+  }
+
+  return (
+    <PageContents>
+      <title>{title}</title>
+      <PlayerDetails player={player} />
+    </PageContents>
   );
 };
 

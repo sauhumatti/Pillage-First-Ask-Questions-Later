@@ -4,27 +4,36 @@ import type {
   Hero,
   HeroResourceToProduce,
 } from '@pillage-first/types/models/hero';
-import { heroSchema } from '@pillage-first/types/models/hero';
+import { useCurrentVillage } from 'app/(game)/(village-slug)/hooks/current-village/use-current-village';
 import {
+  currentVillageCacheKey,
   effectsCacheKey,
   heroCacheKey,
-  playerVillagesCacheKey,
-} from 'app/(game)/(village-slug)/constants/query-keys';
-import { ApiContext } from 'app/(game)/providers/api-provider';
+} from 'app/(game)/constants/query-keys';
+import { ApiContext } from 'app/(game)/providers/api-context';
+import { invalidateQueries } from 'app/utils/react-query';
+import { useMe } from './use-me';
 
 export const useHero = () => {
-  const { fetcher } = use(ApiContext);
+  const { apiClient } = use(ApiContext);
+  const { currentVillage } = useCurrentVillage();
+  const { player } = useMe();
 
   const { data: hero } = useSuspenseQuery({
     queryKey: [heroCacheKey],
     queryFn: async () => {
-      const { data } = await fetcher('/me/hero');
+      const { data } = await apiClient.get('/players/:playerId/hero', {
+        path: {
+          playerId: player.id,
+        },
+      });
 
-      return heroSchema.parse(data);
+      return data;
     },
   });
 
   const { health, experience } = hero.stats;
+  const { isHeroHome } = hero;
   const isHeroAlive = health > 0;
 
   const { mutate: updateHeroAttributes } = useMutation<
@@ -33,22 +42,18 @@ export const useHero = () => {
     Hero['selectableAttributes']
   >({
     mutationFn: async (attributes) => {
-      await fetcher('/me/hero/attributes', {
-        method: 'PATCH',
+      await apiClient.patch('/players/:playerId/hero/attributes', {
+        path: {
+          playerId: player.id,
+        },
         body: attributes,
       });
     },
     onSuccess: async (_, _args, _onMutateResult, context) => {
-      await Promise.all([
-        context.client.invalidateQueries({
-          queryKey: [heroCacheKey],
-        }),
-        context.client.invalidateQueries({
-          queryKey: [effectsCacheKey],
-        }),
-        context.client.invalidateQueries({
-          queryKey: [playerVillagesCacheKey],
-        }),
+      await invalidateQueries(context, [
+        [heroCacheKey],
+        [effectsCacheKey, currentVillage.tileId],
+        [currentVillageCacheKey, currentVillage.slug],
       ]);
     },
   });
@@ -59,22 +64,18 @@ export const useHero = () => {
     HeroResourceToProduce
   >({
     mutationFn: async (resource) => {
-      await fetcher('/me/hero/resource-to-produce', {
-        method: 'PATCH',
+      await apiClient.patch('/players/:playerId/hero/resource-to-produce', {
+        path: {
+          playerId: player.id,
+        },
         body: { resource },
       });
     },
     onSuccess: async (_, _args, _onMutateResult, context) => {
-      await Promise.all([
-        context.client.invalidateQueries({
-          queryKey: [heroCacheKey],
-        }),
-        context.client.invalidateQueries({
-          queryKey: [effectsCacheKey],
-        }),
-        context.client.invalidateQueries({
-          queryKey: [playerVillagesCacheKey],
-        }),
+      await invalidateQueries(context, [
+        [heroCacheKey],
+        [effectsCacheKey, currentVillage.tileId],
+        [currentVillageCacheKey, currentVillage.slug],
       ]);
     },
   });
@@ -84,6 +85,7 @@ export const useHero = () => {
     experience,
     health,
     isHeroAlive,
+    isHeroHome,
     updateHeroAttributes,
     updateHeroResourceToProduce,
   };

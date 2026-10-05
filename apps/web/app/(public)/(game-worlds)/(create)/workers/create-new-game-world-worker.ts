@@ -1,7 +1,16 @@
+import type {
+  OpfsSAHPoolDatabase,
+  SAHPoolUtil,
+  Sqlite3Static,
+} from '@sqlite.org/sqlite-wasm';
 import { migrateAndSeed } from '@pillage-first/db';
 import type { Server } from '@pillage-first/types/models/server';
 import { env } from '@pillage-first/utils/env';
-import { createDbFacade } from '@pillage-first/utils/facades/database';
+import {
+  createDbFacade,
+  type DbFacade,
+} from '@pillage-first/utils/facades/database';
+import { retryWhenFileSystemLocked } from '@pillage-first/utils/opfs-lock-retry';
 import { encodeAppVersionToDatabaseUserVersion } from '@pillage-first/utils/version';
 
 export type CreateNewGameWorldWorkerPayload = {
@@ -16,27 +25,47 @@ export type CreateNewGameWorldWorkerResponse =
   | {
       type: 'result';
       migrationDuration: number;
+    }
+  | {
+      type: 'error';
+      message: string;
+      stack?: string;
     };
+
+let sqlite3: Sqlite3Static | null = null;
+let opfsSahPool: SAHPoolUtil | null = null;
+let database: OpfsSAHPoolDatabase | null = null;
+let dbFacade: DbFacade | null = null;
 
 globalThis.addEventListener(
   'message',
   async (event: MessageEvent<CreateNewGameWorldWorkerPayload>) => {
-    const { default: sqlite3InitModule } = await import(
-      '@sqlite.org/sqlite-wasm'
-    );
     const { server, port } = event.data;
 
-    const sqlite3 = await sqlite3InitModule();
-    const opfsSahPool = await sqlite3.installOpfsSAHPoolVfs({
-      directory: `/pillage-first-ask-questions-later/${server.slug}`,
-    });
+    try {
+      const { default: sqlite3InitModule } = await import(
+        '@sqlite.org/sqlite-wasm'
+      );
 
-    const database = new opfsSahPool.OpfsSAHPoolDb(`/${server.slug}.sqlite3`);
+      sqlite3 ??= await sqlite3InitModule();
 
-    const dbFacade = createDbFacade(database, false);
+      const opfsSahPoolOptions = {
+        directory: `/pillage-first-ask-questions-later/${server.slug}`,
+        forceReinitIfPreviouslyFailed: true,
+      };
 
-    dbFacade.exec({
-      sql: `
+      const initializedSqlite3 = sqlite3;
+
+      opfsSahPool = await retryWhenFileSystemLocked(() =>
+        initializedSqlite3.installOpfsSAHPoolVfs(opfsSahPoolOptions),
+      );
+
+      database = new opfsSahPool.OpfsSAHPoolDb(`/${server.slug}.sqlite3`);
+
+      dbFacade = createDbFacade(database, false);
+
+      dbFacade.exec({
+        sql: `
         PRAGMA user_version=${encodeAppVersionToDatabaseUserVersion(env.VERSION)};
         PRAGMA locking_mode=EXCLUSIVE;
         PRAGMA foreign_keys=OFF;
@@ -45,23 +74,35 @@ globalThis.addEventListener(
         PRAGMA temp_store=MEMORY;
         PRAGMA cache_size=-20000;
       `,
-    });
+      });
 
-    const migrationDuration = migrateAndSeed(dbFacade, server, () => {
+      const migrationDuration = migrateAndSeed(dbFacade, server, () => {
+        port.postMessage({
+          type: 'progress',
+        } satisfies CreateNewGameWorldWorkerResponse);
+      });
+
       port.postMessage({
-        type: 'progress',
+        type: 'result',
+        migrationDuration,
       } satisfies CreateNewGameWorldWorkerResponse);
-    });
+    } catch (error) {
+      const normalizedError =
+        error instanceof Error
+          ? error
+          : new Error('Unknown error happened while creating game world');
 
-    dbFacade.close();
-    database.close();
-    opfsSahPool.pauseVfs();
-
-    port.postMessage({
-      type: 'result',
-      migrationDuration,
-    } satisfies CreateNewGameWorldWorkerResponse);
-    port.close();
-    globalThis.close();
+      port.postMessage({
+        type: 'error',
+        message: normalizedError.message,
+        stack: normalizedError.stack,
+      } satisfies CreateNewGameWorldWorkerResponse);
+    } finally {
+      dbFacade?.close();
+      database?.close();
+      opfsSahPool?.pauseVfs();
+      port.close();
+      globalThis.close();
+    }
   },
 );

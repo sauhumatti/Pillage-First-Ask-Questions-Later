@@ -1,8 +1,10 @@
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
+import { Link, useLocation } from 'react-router';
 import type { Server } from '@pillage-first/types/models/server';
 import { ServerCard } from 'app/(public)/(game-worlds)/(index)/components/server-card';
-import { useGameWorldListing } from 'app/(public)/(game-worlds)/(index)/hooks/use-game-world-listing';
+import { useGameWorldListing } from 'app/(public)/(game-worlds)/hooks/use-game-world-listing';
+import { PageMetadata } from 'app/(public)/components/page-metadata';
+import { PageContents } from 'app/components/page-contents';
 import { Text } from 'app/components/text';
 import { Alert } from 'app/components/ui/alert';
 import {
@@ -16,13 +18,18 @@ import { Button } from 'app/components/ui/button';
 
 const MyGameWorldsPage = () => {
   const { t } = useTranslation('public');
+  const { pathname } = useLocation();
   const { gameWorldListing } = useGameWorldListing();
 
-  const title = t('{{title}} | Pillage First!', { title: 'My game worlds' });
+  const title = t('{{title}} | Pillage First!', { title: 'Game worlds' });
 
   return (
-    <>
-      <title>{title}</title>
+    <PageContents>
+      <PageMetadata
+        title={title}
+        description="View, create, import, manage and continue playing your Pillage First! game worlds."
+        pathname={pathname}
+      />
       <div className="flex flex-col gap-4 max-w-3xl px-2 lg:px-0 mx-auto">
         <Breadcrumb>
           <BreadcrumbList>
@@ -34,7 +41,12 @@ const MyGameWorldsPage = () => {
           </BreadcrumbList>
         </Breadcrumb>
         <main className="flex flex-col gap-4">
-          <Text as="h1">{t('My game worlds')}</Text>
+          <Text
+            as="h1"
+            className="text-3xl font-medium leading-tight lg:text-5xl"
+          >
+            {t('Your game worlds')}
+          </Text>
           <Text>
             Your current game worlds are listed below. To prevent data
             corruptions, each game world may only be opened in a single browser
@@ -58,14 +70,19 @@ const MyGameWorldsPage = () => {
           </div>
 
           <div className="flex flex-col gap-2">
-            <Text>Want to create a new game world instead?</Text>
-            <Link to="/game-worlds/create">
-              <Button variant="outline">Create a new game world</Button>
-            </Link>
+            <Text>Want to create or import an existing game state?</Text>
+            <div className="flex gap-2 overflow-x-scroll scrollbar-hidden">
+              <Link to="/game-worlds/create">
+                <Button>Create a new game world</Button>
+              </Link>
+              <Link to="/game-worlds/import">
+                <Button variant="outline">Import existing game state</Button>
+              </Link>
+            </div>
           </div>
         </main>
       </div>
-    </>
+    </PageContents>
   );
 };
 

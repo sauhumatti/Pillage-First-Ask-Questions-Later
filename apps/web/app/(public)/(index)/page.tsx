@@ -1,108 +1,339 @@
-import { useTranslation } from 'react-i18next';
+import { use } from 'react';
+import { FaGithub } from 'react-icons/fa6';
+import { Link, useLocation } from 'react-router';
+import { DiscordButton } from 'app/(public)/components/discord-button';
+import { GithubButton } from 'app/(public)/components/github-button';
+import { PageMetadata } from 'app/(public)/components/page-metadata';
 import {
-  FaCodeMerge,
-  FaCoins,
-  FaComputer,
-  FaGithub,
-  FaGlobe,
-  FaRegLightbulb,
-  FaSliders,
-  FaUser,
-} from 'react-icons/fa6';
-import { Link } from 'react-router';
+  DiscordSocialProofCard,
+  SocialProofMasonry,
+  TwitterSocialProofCard,
+} from 'app/(public)/components/social-proof';
+import { PageContents } from 'app/components/page-contents';
 import { Text } from 'app/components/text';
 import { Button } from 'app/components/ui/button';
+import { CookieContext } from 'app/providers/cookie-context';
+import screenshotsData from './assets/screenshots.json' with { type: 'json' };
 import Landing from './mdx/landing.mdx';
 import Motivation from './mdx/motivation.mdx';
 import OpenSource from './mdx/open-source.mdx';
 
-const MotivationSection = () => {
-  const { t } = useTranslation('public');
+const screenshots = [
+  {
+    base: 'image-1',
+    alt: 'Resources view',
+  },
+  {
+    base: 'image-2',
+    alt: 'Village view',
+  },
+  {
+    base: 'image-3',
+    alt: 'Map view',
+  },
+  {
+    base: 'image-4',
+    alt: 'Building view',
+  },
+  {
+    base: 'image-5',
+    alt: 'Resources details',
+  },
+];
 
-  const goals = [
-    {
-      title: t('Offline'),
-      icon: FaGlobe,
-      description: t('Play anywhere, anytime, without an internet connection.'),
-    },
-    {
-      title: t('Single player'),
-      icon: FaUser,
-      description: t('No pressure from other players. Play at your own pace.'),
-    },
-    {
-      title: t('Accessible'),
-      icon: FaComputer,
-      description: t(
-        'Modern web technologies ensuring the game runs on any device.',
-      ),
-    },
-    {
-      title: t('Nicer UX'),
-      icon: FaRegLightbulb,
-      description: t('Quality-of-life features and a clean, modern interface.'),
-    },
-    {
-      title: t('No pay to win'),
-      icon: FaCoins,
-      description: t(
-        'No game mechanics to incentivize spending real-world money.',
-      ),
-    },
-    {
-      title: t('Customizable'),
-      icon: FaSliders,
-      description: t(
-        'Fine-tune your experience with a variety of settings and options.',
-      ),
-    },
-  ];
+const LandingScreenshotsSection = () => {
+  const { uiColorScheme } = use(CookieContext);
+
+  const { timestamp } = screenshotsData;
 
   return (
-    <section className="bg-linear-to-b from-background to-[#F5A911] dark:to-[#8B5E00] pt-4 lg:pt-0">
-      <div className="max-w-7xl min-h-75 p-2 mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="w-full mb-8 md:mb-0 order-2 md:order-1 flex justify-center items-center">
-          <div className="grid grid-cols-2 gap-4 w-full">
-            {goals.map((goal) => (
-              <div
-                key={goal.title}
-                className="bg-card/50 backdrop-blur-sm p-2 rounded-md shadow-sm border border-border flex flex-col gap-3 transition-transform hover:scale-105"
-              >
-                <div className="p-2 md:p-3 bg-card rounded-md w-fit shadow-xs">
-                  <goal.icon className="text-[#391600] dark:text-foreground size-4 md:size-6" />
-                </div>
-                <Text
-                  as="h3"
-                  className="text-[#391600] dark:text-foreground font-bold"
-                >
-                  {goal.title}
-                </Text>
-                <Text className="text-[#391600]/80 dark:text-foreground/80 text-sm leading-snug">
-                  {goal.description}
-                </Text>
-              </div>
-            ))}
+    <section className="bg-background pt-4 lg:pt-8">
+      <div className="max-w-7xl px-2 mx-auto">
+        <div className="flex flex-row overflow-x-auto lg:grid lg:grid-cols-5 gap-4 pb-4 lg:pb-0 scrollbar-hide snap-x snap-mandatory">
+          {screenshots.map((screenshot) => (
+            <div
+              key={screenshot.base}
+              className="min-w-60 lg:min-w-0 snap-center"
+            >
+              <Link to="/game-worlds/create">
+                <picture>
+                  <source
+                    srcSet={`/landing/${screenshot.base}-${uiColorScheme}-${timestamp}.avif`}
+                    type="image/avif"
+                  />
+                  <img
+                    src={`/landing/${screenshot.base}-${uiColorScheme}-${timestamp}.jpg`}
+                    alt={screenshot.alt}
+                    width={1170}
+                    height={2100}
+                    className="block rounded-lg border border-border w-full h-auto"
+                    loading="lazy"
+                  />
+                </picture>
+              </Link>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+};
+
+const CTASection = () => {
+  return (
+    <section className="bg-background py-8 lg:py-12">
+      <div className="max-w-7xl px-2 mx-auto flex flex-col items-center gap-2">
+        <Text
+          as="h2"
+          className="text-center"
+        >
+          Ready to pillage?
+        </Text>
+        <Text className="text-center mb-2">
+          Create your first game world bellow, or continue playing on your
+          existing worlds.
+        </Text>
+        <div className="flex flex-wrap gap-2 justify-center">
+          <Link to="/game-worlds/create">
+            <Button>Create new world</Button>
+          </Link>
+          <Link to="/game-worlds">
+            <Button variant="outline">Your game worlds</Button>
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+};
+
+const SocialProofSection = () => {
+  return (
+    <section className="bg-background pt-8 lg:pt-12">
+      <div className="max-w-7xl px-2 mx-auto grid grid-cols-1 gap-6 lg:gap-10">
+        <div className="flex flex-col gap-3">
+          <Text as="h2">Built with strategy players in the loop</Text>
+          <Text variant="muted">
+            Feedback from Discord and X helps shape balance, usability and the
+            parts of classic browser strategy games worth preserving.
+          </Text>
+          <div className="flex flex-wrap gap-2">
+            <DiscordButton>Join the Discord</DiscordButton>
+            <GithubButton />
+            {/*<a*/}
+            {/*  rel="noopener noreferrer"*/}
+            {/*  target="_blank"*/}
+            {/*  href="https://x.com/pillagefirst"*/}
+            {/*  className="inline-flex w-fit"*/}
+            {/*>*/}
+            {/*  <Button*/}
+            {/*    variant="outline"*/}
+            {/*    className="inline-flex items-center gap-2"*/}
+            {/*  >*/}
+            {/*    <FaXTwitter className="size-4" />*/}
+            {/*    Follow on X*/}
+            {/*  </Button>*/}
+            {/*</a>*/}
           </div>
         </div>
 
-        <div className="flex flex-col w-full lg:my-20 gap-4 z-10 order-1 md:order-2">
+        <SocialProofMasonry>
+          <DiscordSocialProofCard
+            author="Laarva on Discord"
+            body="Very excited for new updates. Really loving what I've seen so far I have been wanting an offline game like this forever. Keep up the good work!"
+          />
+          <TwitterSocialProofCard
+            author="Orcdev"
+            body="Here are some amazing open source projects I found: Pillage First Ask Questions Later by @jurerotar"
+            href="https://x.com/orcdev/status/2026055804646723633"
+          />
+          <DiscordSocialProofCard
+            author="hoangnguyen5639 on Discord"
+            body="I love this game so much, waiting for any update!"
+          />
+          <DiscordSocialProofCard
+            author="AllNineAliens on Discord"
+            body="I'd just like to say, that I love this project! I've thought about making something similar time and time again! Last time I played Travian was in 2015, and I haven't been able to scratch that itch since."
+          />
+
+          <DiscordSocialProofCard
+            author="Neme on Discord"
+            body="I love the idea of this project. I was actually missing this kind of game as my work hours do not really allow me to 24/7 Travian anymore."
+          />
+          <DiscordSocialProofCard
+            author="Ekklo on Discord"
+            body="Love your work dude! Keep it up!"
+          />
+          <DiscordSocialProofCard
+            author="Petrey on Discord"
+            body="Awesome project I can say. I have just discoverd it and start to test it. I can't imagine how big complexity must be on the backend. But fingers cross, that development will still continue!"
+          />
+          <DiscordSocialProofCard
+            author="Cheese on Discord"
+            body="The game is awesome. I study almost 11 hours a day and I really needed something to play in my 15 minute breaks."
+          />
+          <DiscordSocialProofCard
+            author="Joseph on Discord"
+            body="I think the idea is genius and really fun."
+          />
+          <DiscordSocialProofCard
+            author="Stellar on Discord"
+            body="I've been dreaming of an offline version, and now it's finally in the making. Amazing!"
+          />
+          <DiscordSocialProofCard
+            author="Foxplay on Discord"
+            body="I'm so happy to get a chance playing this again with a few tweeks in quality of life, that make it so much better. Thank you very much, looking forward to this!"
+          />
+          <DiscordSocialProofCard
+            author="Gilli on Discord"
+            body="Thank you for doing this! I have been following the progress of the game some time now, and I am really impressed by the development and the frequent updates! Having a game like this, where you don't have to juggle work, kids and IRL off time activities at the same time is just amazing!"
+          />
+        </SocialProofMasonry>
+      </div>
+    </section>
+  );
+};
+
+const principles = [
+  {
+    title: 'Play on your time',
+    description:
+      'We know life comes first. The game should work with your schedule, rewarding good planning instead of constant check-ins and perfectly timed logins.',
+  },
+  {
+    title: 'No downloads, no accounts',
+    description:
+      'Open the game and start playing. No installation and no registration. Your game stays on your device, under your control.',
+  },
+  {
+    title: 'No monetization hooks in the design',
+    description:
+      'No premium queues, no paid boosts and no mechanics that are worse on purpose until money is involved.',
+  },
+];
+
+const MotivationSection = () => {
+  return (
+    <section className="pt-4 lg:pt-0">
+      <div className="max-w-7xl min-h-75 p-2 mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="w-full mb-8 md:mb-0 order-2 flex items-center">
+          <div className="w-full border-y border-border divide-y">
+            {principles.map((principle, index) => (
+              <div
+                key={principle.title}
+                className="grid grid-cols-[3rem_1fr] gap-3 py-4 md:grid-cols-[4rem_1fr] md:gap-5 md:py-6"
+              >
+                <Text
+                  as="span"
+                  className="font-mono text-3xl md:text-4xl leading-none text-foreground/40"
+                >
+                  0{index + 1}
+                </Text>
+                <div className="flex flex-col gap-2">
+                  <Text
+                    as="h3"
+                    className="font-bold"
+                  >
+                    {principle.title}
+                  </Text>
+                  <Text className="text-foreground/80 text-sm leading-snug">
+                    {principle.description}
+                  </Text>
+                </div>
+              </div>
+            ))}
+
+            <div className="py-4 md:py-6">
+              <Text className="max-w-xl text-lg font-medium leading-7">
+                Built for the player who misses the long-form strategy loop, but
+                not the obligation to live inside it.
+              </Text>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col w-full lg:my-20 gap-4 z-10 order-1">
           <Text
             as="h2"
-            className="text-[#391600] dark:text-foreground"
+            className="text-foreground"
           >
             Motivation behind Pillage First!
           </Text>
 
-          <div className="prose text-[#391600] dark:text-foreground">
+          <div className="prose text-foreground">
             <Motivation />
           </div>
-          <Link
-            rel="noopener noreferrer"
-            target="_blank"
-            to="https://discord.gg/Ep7NKVXUZA"
-          >
-            <Button>Join our community on Discord</Button>
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <DiscordButton>Help shape the game</DiscordButton>
+            <Link to="/get-involved">
+              <Button variant="secondary">Get involved</Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+};
+
+const questions = [
+  {
+    question: 'Are there differences between Travian and Pillage First!?',
+    answer:
+      'Yes, there are a few! The main ones include new buildings, the removal of the capital village mechanic, expanded artifact system, planned new hero items and more NPC interactions. Mechanics are always up for discussion, so make sure to join our Discord server and share with us your thoughts!',
+  },
+  {
+    question: 'Can I create more than one game world at a time?',
+    answer:
+      'Yes! You may create as many game worlds as you wish. You may also duplicate or export and share your game worlds with other players.',
+  },
+  {
+    question: 'Why single player?',
+    answer:
+      'We want to provide each player with the ability to customize their own unique gameplay experience. This is not possible in a multiplayer environment.',
+  },
+  {
+    question: 'Does the game continue even if I close the app?',
+    answer:
+      "Yes! You're free to close the app at any time and the game will pick off right next time you open it again! Units will continue to be trained, buildings will continue to be constructed and troops will continue to raid exactly as they would if you kept the app running.",
+  },
+  {
+    question: 'Can game worlds be shared between devices?',
+    answer:
+      'Yes! You can do so by either manually exporting and re-importing game world file, or by using an automatic method, which is only possible to do with devices on the same network.',
+  },
+];
+
+const FAQSection = () => {
+  return (
+    <section className="py-8 lg:py-12">
+      <div className="max-w-7xl p-2 mx-auto grid grid-cols-1 md:grid-cols-[0.8fr_1.2fr] gap-8">
+        <div className="flex flex-col gap-3">
+          <Text as="h2">Frequently asked questions</Text>
+          <Text>
+            Short answers for the things people usually want to know before
+            starting a world.
+          </Text>
+        </div>
+
+        <div className="divide-y divide-border border-y">
+          {questions.map((item) => (
+            <details
+              key={item.question}
+              className="group py-4"
+            >
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-foreground">
+                <Text
+                  as="h3"
+                  className="font-bold"
+                >
+                  {item.question}
+                </Text>
+                <span className="text-2xl leading-none transition-transform group-open:rotate-45">
+                  +
+                </span>
+              </summary>
+              <Text className="pt-3 pr-8">{item.answer}</Text>
+            </details>
+          ))}
         </div>
       </div>
     </section>
@@ -111,31 +342,17 @@ const MotivationSection = () => {
 
 const OpenSourceSection = () => {
   return (
-    <section className="bg-linear-to-t from-[#FFE345] via-[#FFD24A] to-[#F5A911] dark:from-[#9A8400] dark:via-[#8B7400] dark:to-[#8B5E00] overflow-hidden pt-4 lg:pt-0 -mb-4">
+    <section className="dark:bg-background overflow-hidden pt-4 lg:pt-0 -mb-4">
       <div className="max-w-7xl min-h-75 p-2 mx-auto grid grid-cols-1 md:grid-cols-2">
         <div className="flex flex-col w-full lg:my-20 gap-4 z-10">
-          <div className="inline-flex justify-center items-center w-fit p-4 bg-card rounded-full">
-            <FaCodeMerge className="text-[#391600] dark:text-foreground size-6" />
-          </div>
-          <Text
-            as="h2"
-            className="text-[#391600] dark:text-foreground"
-          >
-            Pillage First! is an open-source technology!
-          </Text>
+          <Text as="h2">Pillage First! is an open-source technology!</Text>
 
-          <div className="text-[#391600] dark:text-foreground">
+          <div>
             <OpenSource />
           </div>
 
-          <div className="flex gap-2">
-            <a
-              rel="noopener noreferrer"
-              href="https://github.com/jurerotar/Pillage-First-Ask-Questions-Later"
-              target="_blank"
-            >
-              <Button>GitHub</Button>
-            </a>
+          <div className="flex flex-wrap gap-2 items-center">
+            <GithubButton />
             <Link to="/get-involved">
               <Button variant="secondary">Get involved</Button>
             </Link>
@@ -145,10 +362,10 @@ const OpenSourceSection = () => {
         <div className="w-full mt-16 relative">
           <FaGithub
             className="
-              absolute -right-20 -top-60 md:-right-4 md:-top-8
-              text-[#391600] dark:text-foreground
+              absolute -right-40 -top-80 md:-right-20 md:top-10 lg:-right-4 lg:top-4
+              text-[#101411] dark:text-foreground
               opacity-40 md:opacity-80
-              size-80 md:size-100 lg:size-120
+              size-100 md:size-130 lg:size-150
             "
             aria-hidden
           />
@@ -159,36 +376,46 @@ const OpenSourceSection = () => {
 };
 
 const HomePage = () => {
+  const { pathname } = useLocation();
+
   return (
-    <>
-      <title>Pillage First! (Ask Questions Later)</title>
+    <PageContents>
+      <PageMetadata
+        title="Pillage First! (Ask Questions Later)"
+        description="Pillage First! (Ask Questions Later) is an open-source, single-player, strategy game inspired by Travian. Build villages, manage resources, train troops, start adventures and wage war in persistent, offline-first game worlds."
+        pathname={pathname}
+      />
       <main>
-        <div className="max-w-7xl mx-auto flex min-h-112.5 lg:-mt-6 flex-col lg:flex-row gap-2 px-2 justify-center items-center">
+        <div className="max-w-7xl mx-auto flex py-8 lg:py-12 lg:-mt-6 flex-col lg:flex-row gap-2 px-2 justify-center items-center">
           <section className="flex flex-col flex-1 gap-4 justify-center">
             <Text
               as="h1"
-              className="text-xl sm:text-2xl"
+              className="text-3xl font-medium leading-tight lg:text-5xl"
             >
               <b>Pillage First! (Ask Questions Later)</b>
             </Text>
 
             <Landing />
 
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Link to="/game-worlds/create">
-                <Button>Try now</Button>
+                <Button>Create new world</Button>
               </Link>
               <Link to="/game-worlds">
-                <Button variant="outline">Existing game worlds</Button>
+                <Button variant="outline">Your game worlds</Button>
               </Link>
+              <DiscordButton />
             </div>
           </section>
-          <section className="flex flex-1" />
         </div>
+        <LandingScreenshotsSection />
+        <SocialProofSection />
+        <CTASection />
         <MotivationSection />
+        <FAQSection />
         <OpenSourceSection />
       </main>
-    </>
+    </PageContents>
   );
 };
 

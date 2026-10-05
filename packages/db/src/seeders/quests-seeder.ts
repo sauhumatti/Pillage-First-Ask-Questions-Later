@@ -1,10 +1,11 @@
 import { z } from 'zod';
 import { PLAYER_ID } from '@pillage-first/game-assets/player';
 import {
-  createUnitTroopCountQuests,
+  createQueuedTroopCountByIdQuests,
   globalQuests,
   newVillageQuestsFactory,
 } from '@pillage-first/game-assets/quests';
+import { resourceFieldCompositionSchema } from '@pillage-first/types/models/resource-field-composition';
 import { playableTribeSchema } from '@pillage-first/types/models/tribe';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
 import { batchInsert } from '../utils/batch-insert';
@@ -22,33 +23,45 @@ export const questsSeeder = (database: DbFacade): void => {
     schema: z.number(),
   })!;
 
-  const playerTribe = database.selectValue({
-    sql: `
-      SELECT ti.tribe
+  const { playerTribe, playerResourceFieldComposition } = database.selectObject(
+    {
+      sql: `
+      SELECT
+        ti.tribe AS playerTribe,
+        rfc.resource_field_composition AS playerResourceFieldComposition
       FROM
         players p
         JOIN tribe_ids ti ON ti.id = p.tribe_id
+        JOIN villages v ON v.player_id = p.id
+        JOIN tiles t ON t.id = v.tile_id
+        JOIN resource_field_composition_ids rfc ON rfc.id = t.resource_field_composition_id
       WHERE
         p.id = $player_id;
     `,
-    bind: { $player_id: PLAYER_ID },
-    schema: playableTribeSchema,
-  })!;
+      bind: { $player_id: PLAYER_ID },
+      schema: z.strictObject({
+        playerTribe: playableTribeSchema,
+        playerResourceFieldComposition: resourceFieldCompositionSchema,
+      }),
+    },
+  )!;
 
   const questsToSeed = [];
 
   const villageQuests = newVillageQuestsFactory(
     playerStartingVillageId,
     playerTribe,
+    playerResourceFieldComposition,
   );
 
-  const tribeUnitTroopCountQuests = createUnitTroopCountQuests(playerTribe);
+  const queuedTroopCountByIdQuests =
+    createQueuedTroopCountByIdQuests(playerTribe);
 
   for (const { id } of villageQuests) {
     questsToSeed.push([id, null, null, playerStartingVillageId]);
   }
 
-  const seedableGlobalQuests = [...globalQuests, ...tribeUnitTroopCountQuests];
+  const seedableGlobalQuests = [...globalQuests, ...queuedTroopCountByIdQuests];
 
   for (const { id } of seedableGlobalQuests) {
     questsToSeed.push([id, null, null, null]);

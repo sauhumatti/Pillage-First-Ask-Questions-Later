@@ -6,7 +6,8 @@ CREATE TABLE map_filters
   should_show_troop_movements    INTEGER NOT NULL CHECK (should_show_troop_movements IN (0, 1)),
   should_show_wheat_fields       INTEGER NOT NULL CHECK (should_show_wheat_fields IN (0, 1)),
   should_show_tile_tooltips      INTEGER NOT NULL CHECK (should_show_tile_tooltips IN (0, 1)),
-  should_show_treasure_icons     INTEGER NOT NULL CHECK (should_show_treasure_icons IN (0, 1)),
 
   FOREIGN KEY (player_id) REFERENCES players (id) ON DELETE CASCADE
 ) STRICT;
+
+CREATE INDEX idx_map_filters_player_id ON map_filters(player_id);

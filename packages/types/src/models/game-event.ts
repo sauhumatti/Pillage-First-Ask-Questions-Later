@@ -1,7 +1,9 @@
 import { z } from 'zod';
-import type { Building } from './building';
+import { type Building, buildingIdSchema } from './building';
 import type { BuildingField } from './building-field';
 import type { TroopTrainingDurationEffectId } from './effect';
+import type { ResourceBundle, Resources } from './resource';
+import type { Tile } from './tile';
 import type { Troop } from './troop';
 import type { Unit } from './unit';
 import type { Village } from './village';
@@ -12,8 +14,14 @@ type BaseGameEvent = {
   startsAt: number;
   duration: number;
   resolvesAt: number;
-  // This type is essentially a lie. `villageId` can be either a number or null, but we have a ton of type issues if we type it as such.
-  // We just need to careful in global event resolvers to not use village id!
+  villageId: Village['id'] | null;
+};
+
+type GlobalGameEvent = Omit<BaseGameEvent, 'villageId'> & {
+  villageId: null;
+};
+
+type VillageGameEvent = Omit<BaseGameEvent, 'villageId'> & {
   villageId: Village['id'];
 };
 
@@ -25,9 +33,7 @@ type BaseBuildingEvent = {
 };
 
 type BuildingLevelChangeEvent = BaseBuildingEvent;
-type BuildingScheduledConstructionEvent = BaseBuildingEvent;
-
-type BuildingDestructionEvent = Omit<BaseBuildingEvent, 'level'>;
+type BuildingDestructionEvent = BaseBuildingEvent;
 
 type UnitResearchEvent = {
   unitId: Unit['id'];
@@ -38,6 +44,22 @@ type UnitImprovementEvent = {
   level: number;
 };
 
+type AnimalCageProductionEvent = {
+  cageAmount: number;
+};
+
+type TrapperCageProductionEvent = {
+  cageAmount: number;
+};
+
+type HuntersLodgeHuntEvent = {
+  huntingPartyLevel: number;
+};
+
+type GatherersHutGatheringTripEvent = {
+  troops: Troop[];
+};
+
 type BaseUnitTrainingEvent = {
   batchId: string;
   amount: number;
@@ -46,27 +68,72 @@ type BaseUnitTrainingEvent = {
   buildingId: Building['id'];
 };
 
-export type TroopMovementType =
-  | 'reinforcements'
-  | 'relocation'
-  | 'return'
-  | 'find-new-village'
-  | 'attack'
-  | 'raid'
-  | 'oasis-occupation'
-  | 'adventure';
-
 type BaseTroopMovementEvent = {
   troops: Troop[];
-  targetId: Village['id'];
+  originTileId: Tile['id'];
+  targetTileId: Tile['id'];
+  scoutingTarget?: ScoutingTarget;
+  catapultTargets?: CatapultTarget[];
+  heroOasisAnimalAction?: HeroOasisAnimalAction;
 };
 
+type BaseMerchantRouteEvent = {
+  originTileId: Tile['id'];
+  targetTileId: Tile['id'];
+  targetVillageId: Village['id'];
+  resources: Resources;
+};
+
+type BaseMerchantMovementEvent = BaseMerchantRouteEvent & {
+  merchantAmount: number;
+  repeatRemaining: number;
+  repeatResources: Resources;
+};
+
+type TradeRouteEvent = BaseMerchantRouteEvent & {
+  interval: number;
+};
+
+export type TroopMovementEventType = Extract<
+  GameEventType,
+  | 'troopMovementReinforcements'
+  | 'troopMovementRelocation'
+  | 'troopMovementReturn'
+  | 'troopMovementFindNewVillage'
+  | 'troopMovementAttack'
+  | 'troopMovementRaid'
+  | 'troopMovementOasisOccupation'
+  | 'troopMovementAdventure'
+>;
+
+export const scoutingTargetSchema = z.enum([
+  'resources',
+  'defensiveStructures',
+]);
+
+export type ScoutingTarget = z.infer<typeof scoutingTargetSchema>;
+
+export const heroOasisAnimalActionSchema = z.enum(['battle', 'capture']);
+
+export type HeroOasisAnimalAction = z.infer<typeof heroOasisAnimalActionSchema>;
+
+export const catapultTargetSchema = z.union([
+  buildingIdSchema,
+  z.literal('random'),
+]);
+
+export type CatapultTarget = z.infer<typeof catapultTargetSchema>;
+
+export const catapultTargetsSchema = z.array(catapultTargetSchema).max(2);
+
 export type ReturnTroopMovementEvent = BaseTroopMovementEvent & {
-  originalMovementType: TroopMovementType;
+  originalMovementType:
+    | TroopMovementEventType
+    | 'troopMovementReturnReinforcements';
+  loot?: ResourceBundle;
 };
 
 export const gameEventTypeSchema = z.enum([
-  'buildingScheduledConstruction',
   'buildingConstruction',
   'buildingLevelChange',
   'buildingDestruction',
@@ -81,44 +148,43 @@ export const gameEventTypeSchema = z.enum([
   'troopMovementAdventure',
   'unitResearch',
   'unitImprovement',
-  'adventurePointIncrease',
+  'animalCageProduction',
+  'trapperCageProduction',
+  'huntersLodgeHunt',
+  'gatherersHutGatheringTrip',
   'heroRevival',
   'heroHealthRegeneration',
+  'loyaltyIncrease',
+  'resourceTransfer',
+  'tradeRoute',
 ]);
 
 export type GameEventType = z.infer<typeof gameEventTypeSchema>;
 
-export type TroopMovementEventType = Extract<
-  GameEventType,
-  | 'troopMovementReinforcements'
-  | 'troopMovementRelocation'
-  | 'troopMovementReturn'
-  | 'troopMovementFindNewVillage'
-  | 'troopMovementAttack'
-  | 'troopMovementRaid'
-  | 'troopMovementOasisOccupation'
-  | 'troopMovementAdventure'
->;
-
 export type GameEventTypeToEventArgsMap<T extends GameEventType> = {
-  buildingScheduledConstruction: BuildingScheduledConstructionEvent;
-  buildingConstruction: BaseBuildingEvent;
-  buildingLevelChange: BuildingLevelChangeEvent;
-  buildingDestruction: BuildingDestructionEvent;
-  troopTraining: BaseUnitTrainingEvent;
-  unitResearch: UnitResearchEvent;
-  unitImprovement: UnitImprovementEvent;
-  troopMovementReinforcements: BaseTroopMovementEvent;
-  troopMovementRelocation: BaseTroopMovementEvent;
-  troopMovementReturn: ReturnTroopMovementEvent;
-  troopMovementFindNewVillage: BaseTroopMovementEvent;
-  troopMovementAttack: BaseTroopMovementEvent;
-  troopMovementRaid: BaseTroopMovementEvent;
-  troopMovementOasisOccupation: BaseTroopMovementEvent;
-  troopMovementAdventure: BaseTroopMovementEvent;
-  adventurePointIncrease: BaseGameEvent;
-  heroRevival: BaseGameEvent;
-  heroHealthRegeneration: BaseGameEvent;
+  buildingConstruction: BaseBuildingEvent & VillageGameEvent;
+  buildingLevelChange: BuildingLevelChangeEvent & VillageGameEvent;
+  buildingDestruction: BuildingDestructionEvent & VillageGameEvent;
+  troopTraining: BaseUnitTrainingEvent & VillageGameEvent;
+  unitResearch: UnitResearchEvent & VillageGameEvent;
+  unitImprovement: UnitImprovementEvent & VillageGameEvent;
+  animalCageProduction: AnimalCageProductionEvent & VillageGameEvent;
+  trapperCageProduction: TrapperCageProductionEvent & VillageGameEvent;
+  huntersLodgeHunt: HuntersLodgeHuntEvent & VillageGameEvent;
+  gatherersHutGatheringTrip: GatherersHutGatheringTripEvent & VillageGameEvent;
+  troopMovementReinforcements: BaseTroopMovementEvent & VillageGameEvent;
+  troopMovementRelocation: BaseTroopMovementEvent & VillageGameEvent;
+  troopMovementReturn: ReturnTroopMovementEvent & VillageGameEvent;
+  troopMovementFindNewVillage: BaseTroopMovementEvent & VillageGameEvent;
+  troopMovementAttack: BaseTroopMovementEvent & VillageGameEvent;
+  troopMovementRaid: BaseTroopMovementEvent & VillageGameEvent;
+  troopMovementOasisOccupation: BaseTroopMovementEvent & VillageGameEvent;
+  troopMovementAdventure: BaseTroopMovementEvent & VillageGameEvent;
+  heroRevival: VillageGameEvent;
+  heroHealthRegeneration: GlobalGameEvent;
+  loyaltyIncrease: GlobalGameEvent;
+  resourceTransfer: BaseMerchantMovementEvent & VillageGameEvent;
+  tradeRoute: TradeRouteEvent & VillageGameEvent;
 }[T];
 
 export type TroopMovementEvent =
@@ -132,14 +198,16 @@ export type TroopMovementEvent =
   | GameEvent<'troopMovementAdventure'>;
 
 export type BuildingEvent =
-  | GameEvent<'buildingScheduledConstruction'>
+  | GameEvent<'buildingDestruction'>
   | GameEvent<'buildingLevelChange'>
   | GameEvent<'buildingConstruction'>;
 
+type TypedGameEvent<T extends GameEventType> = Omit<
+  BaseGameEvent,
+  'type' | 'villageId'
+> & {
+  type: T;
+} & GameEventTypeToEventArgsMap<T>;
+
 export type GameEvent<T extends GameEventType | undefined = undefined> =
-  T extends undefined
-    ? BaseGameEvent
-    : Omit<BaseGameEvent, 'type'> & {
-        type: T;
-        // @ts-expect-error - undefined is triggering the TS compiler even though we check for it, tsc is dumb
-      } & GameEventTypeToEventArgsMap<T>;
+  T extends GameEventType ? TypedGameEvent<T> : BaseGameEvent;

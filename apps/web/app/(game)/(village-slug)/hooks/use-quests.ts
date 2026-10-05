@@ -1,26 +1,30 @@
 import { useMutation, useSuspenseQuery } from '@tanstack/react-query';
 import { use } from 'react';
-import { z } from 'zod';
-import { type Quest, questSchema } from '@pillage-first/types/models/quest';
+import type { Quest } from '@pillage-first/types/models/quest';
+import { useCurrentVillage } from 'app/(game)/(village-slug)/hooks/current-village/use-current-village';
 import {
   collectableQuestCountCacheKey,
+  currentVillageCacheKey,
   heroCacheKey,
-  playerVillagesCacheKey,
   questsCacheKey,
-} from 'app/(game)/(village-slug)/constants/query-keys';
-import { useCurrentVillage } from 'app/(game)/(village-slug)/hooks/current-village/use-current-village';
-import { ApiContext } from 'app/(game)/providers/api-provider';
+} from 'app/(game)/constants/query-keys';
+import { ApiContext } from 'app/(game)/providers/api-context';
+import { invalidateQueries } from 'app/utils/react-query';
 
 export const useQuests = () => {
-  const { fetcher } = use(ApiContext);
+  const { apiClient } = use(ApiContext);
   const { currentVillage } = useCurrentVillage();
 
   const { data: quests } = useSuspenseQuery({
     queryKey: [questsCacheKey, currentVillage.id],
     queryFn: async () => {
-      const { data } = await fetcher(`/villages/${currentVillage.id}/quests`);
+      const { data } = await apiClient.get('/villages/:villageId/quests', {
+        path: {
+          villageId: currentVillage.id,
+        },
+      });
 
-      return z.array(questSchema).parse(data);
+      return data;
     },
   });
 
@@ -30,22 +34,20 @@ export const useQuests = () => {
     { questId: Quest['id'] }
   >({
     mutationFn: async ({ questId }) => {
-      await fetcher(
-        `/villages/${currentVillage.id}/quests/${questId}/collect`,
-        {
-          method: 'PATCH',
+      await apiClient.patch('/villages/:villageId/quests/:questId/collect', {
+        path: {
+          villageId: currentVillage.id,
+          questId,
         },
-      );
+      });
     },
     onSuccess: async (_data, _vars, _onMutateResult, context) => {
-      await context.client.invalidateQueries({ queryKey: [questsCacheKey] });
-      await context.client.invalidateQueries({
-        queryKey: [collectableQuestCountCacheKey],
-      });
-      await context.client.invalidateQueries({
-        queryKey: [playerVillagesCacheKey],
-      });
-      await context.client.invalidateQueries({ queryKey: [heroCacheKey] });
+      await invalidateQueries(context, [
+        [questsCacheKey, currentVillage.id],
+        [collectableQuestCountCacheKey, currentVillage.id],
+        [currentVillageCacheKey],
+        [heroCacheKey],
+      ]);
     },
   });
 

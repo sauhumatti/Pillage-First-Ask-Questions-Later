@@ -17,24 +17,22 @@ import { villageMock } from '@pillage-first/mocks/village';
 import type {
   ArtifactEffect,
   GlobalEffect,
+  HeroEffect,
   OasisEffect,
+  ResourceProductionEffectId,
   TribalEffect,
   VillageBuildingEffect,
   VillageEffect,
 } from '@pillage-first/types/models/effect';
 import { calculateComputedEffect } from '../calculate-computed-effect';
 
-const villageId = villageMock.id;
+const tileId = villageMock.id;
 
 describe('calculateComputedEffect – woodProduction', () => {
   describe('woodProduction', () => {
     test('base only – should return 100', () => {
       const effects = [woodProductionBaseEffectMock];
-      const result = calculateComputedEffect(
-        'woodProduction',
-        effects,
-        villageId,
-      );
+      const result = calculateComputedEffect('woodProduction', effects, tileId);
       expect(result.total).toBe(100);
     });
 
@@ -43,11 +41,7 @@ describe('calculateComputedEffect – woodProduction', () => {
         woodProductionBaseEffectMock,
         woodProductionBonusEffectMock,
       ];
-      const result = calculateComputedEffect(
-        'woodProduction',
-        effects,
-        villageId,
-      );
+      const result = calculateComputedEffect('woodProduction', effects, tileId);
       expect(result.total).toBe(125);
     });
 
@@ -57,11 +51,7 @@ describe('calculateComputedEffect – woodProduction', () => {
         woodProductionBonusEffectMock,
         woodProductionBonusBoosterEffectMock,
       ];
-      const result = calculateComputedEffect(
-        'woodProduction',
-        effects,
-        villageId,
-      );
+      const result = calculateComputedEffect('woodProduction', effects, tileId);
       expect(result.total).toBe(150);
     });
 
@@ -72,11 +62,7 @@ describe('calculateComputedEffect – woodProduction', () => {
         woodProductionBonusBoosterEffectMock,
         woodProductionServerEffectMock,
       ];
-      const result = calculateComputedEffect(
-        'woodProduction',
-        effects,
-        villageId,
-      );
+      const result = calculateComputedEffect('woodProduction', effects, tileId);
       expect(result.total).toBe(300);
     });
 
@@ -87,11 +73,7 @@ describe('calculateComputedEffect – woodProduction', () => {
         woodProductionBonusBoosterEffectMock,
         woodProductionHeroBaseEffectMock,
       ];
-      const result = calculateComputedEffect(
-        'woodProduction',
-        effects,
-        villageId,
-      );
+      const result = calculateComputedEffect('woodProduction', effects, tileId);
       expect(result.total).toBe(160);
     });
 
@@ -103,11 +85,7 @@ describe('calculateComputedEffect – woodProduction', () => {
         woodProductionHeroBaseEffectMock,
         woodProductionHeroBonusEffectMock,
       ];
-      const result = calculateComputedEffect(
-        'woodProduction',
-        effects,
-        villageId,
-      );
+      const result = calculateComputedEffect('woodProduction', effects, tileId);
       expect(result.total).toBe(260);
     });
 
@@ -120,11 +98,7 @@ describe('calculateComputedEffect – woodProduction', () => {
         woodProductionHeroBonusEffectMock,
         woodProductionServerEffectMock,
       ];
-      const result = calculateComputedEffect(
-        'woodProduction',
-        effects,
-        villageId,
-      );
+      const result = calculateComputedEffect('woodProduction', effects, tileId);
       expect(result.total).toBe(520);
     });
 
@@ -133,11 +107,7 @@ describe('calculateComputedEffect – woodProduction', () => {
         woodProductionBaseEffectMock,
         woodProductionServerEffectMock,
       ];
-      const result = calculateComputedEffect(
-        'woodProduction',
-        effects,
-        villageId,
-      );
+      const result = calculateComputedEffect('woodProduction', effects, tileId);
       expect(result.total).toBe(200);
     });
 
@@ -149,13 +119,36 @@ describe('calculateComputedEffect – woodProduction', () => {
         woodProductionBonusEffectMock,
         woodProductionBonusBoosterEffectMock,
       ];
-      const result = calculateComputedEffect(
-        'woodProduction',
-        effects,
-        villageId,
-      );
+      const result = calculateComputedEffect('woodProduction', effects, tileId);
       expect(result.total).toBe(225);
     });
+
+    test.each([
+      ['woodProduction'],
+      ['clayProduction'],
+      ['ironProduction'],
+    ] satisfies [ResourceProductionEffectId][])(
+      '00018 with no %s building base and hero base 1000 – should return 1000',
+      (effectId) => {
+        const heroBaseEffect: HeroEffect = {
+          tileId,
+          id: effectId,
+          scope: 'local',
+          source: 'hero',
+          value: 1000,
+          type: 'base',
+          sourceSpecifier: null,
+        };
+
+        const result = calculateComputedEffect(
+          effectId,
+          [heroBaseEffect],
+          tileId,
+        );
+
+        expect(result.total).toBe(1000);
+      },
+    );
   });
 
   describe('wheatProduction', () => {
@@ -164,7 +157,7 @@ describe('calculateComputedEffect – woodProduction', () => {
       const result = calculateComputedEffect(
         'wheatProduction',
         effects,
-        villageId,
+        tileId,
       );
       expect(result.total).toBe(100);
     });
@@ -177,7 +170,7 @@ describe('calculateComputedEffect – woodProduction', () => {
       const result = calculateComputedEffect(
         'wheatProduction',
         effects,
-        villageId,
+        tileId,
       );
       expect(result.total).toBe(125);
     });
@@ -191,7 +184,7 @@ describe('calculateComputedEffect – woodProduction', () => {
       const result = calculateComputedEffect(
         'wheatProduction',
         effects,
-        villageId,
+        tileId,
       );
       expect(result.total).toBe(150);
     });
@@ -206,7 +199,7 @@ describe('calculateComputedEffect – woodProduction', () => {
       const result = calculateComputedEffect(
         'wheatProduction',
         effects,
-        villageId,
+        tileId,
       );
       expect(result.total).toBe(300);
     });
@@ -221,7 +214,7 @@ describe('calculateComputedEffect – woodProduction', () => {
       const result = calculateComputedEffect(
         'wheatProduction',
         effects,
-        villageId,
+        tileId,
       );
       expect(result.total).toBe(160);
     });
@@ -237,7 +230,7 @@ describe('calculateComputedEffect – woodProduction', () => {
       const result = calculateComputedEffect(
         'wheatProduction',
         effects,
-        villageId,
+        tileId,
       );
       expect(result.total).toBe(260);
     });
@@ -254,7 +247,7 @@ describe('calculateComputedEffect – woodProduction', () => {
       const result = calculateComputedEffect(
         'wheatProduction',
         effects,
-        villageId,
+        tileId,
       );
       expect(result.total).toBe(520);
     });
@@ -267,7 +260,7 @@ describe('calculateComputedEffect – woodProduction', () => {
       const result = calculateComputedEffect(
         'wheatProduction',
         effects,
-        villageId,
+        tileId,
       );
       expect(result.total).toBe(200);
     });
@@ -283,9 +276,81 @@ describe('calculateComputedEffect – woodProduction', () => {
       const result = calculateComputedEffect(
         'wheatProduction',
         effects,
-        villageId,
+        tileId,
       );
       expect(result.total).toBe(225);
+    });
+
+    test('multiple wheat production bonuses are additive within their source group', () => {
+      const wheatField: VillageBuildingEffect = {
+        ...wheatProductionBaseEffectMock,
+        value: 1400,
+      };
+      const grainMill: VillageBuildingEffect = {
+        ...wheatProductionBonusEffectMock,
+        value: 1.25,
+        sourceSpecifier: 19,
+      };
+      const bakery: VillageBuildingEffect = {
+        ...wheatProductionBonusEffectMock,
+        value: 1.25,
+        sourceSpecifier: 20,
+      };
+      const oasisEffects: OasisEffect[] = [21, 22, 23].map(
+        (sourceSpecifier) => ({
+          id: 'wheatProduction',
+          value: 1.5,
+          type: 'bonus',
+          source: 'oasis',
+          scope: 'local',
+          tileId,
+          sourceSpecifier,
+        }),
+      );
+
+      const result = calculateComputedEffect(
+        'wheatProduction',
+        [wheatField, grainMill, bakery, ...oasisEffects],
+        tileId,
+      );
+
+      expect(result.total).toBe(4200);
+    });
+
+    test('uses already boosted oasis bonus effects', () => {
+      const wheatField: VillageBuildingEffect = {
+        ...wheatProductionBaseEffectMock,
+        value: 1400,
+      };
+      const grainMill: VillageBuildingEffect = {
+        ...wheatProductionBonusEffectMock,
+        value: 1.25,
+        sourceSpecifier: 19,
+      };
+      const bakery: VillageBuildingEffect = {
+        ...wheatProductionBonusEffectMock,
+        value: 1.25,
+        sourceSpecifier: 20,
+      };
+      const oasisEffects: OasisEffect[] = [21, 22, 23].map(
+        (sourceSpecifier) => ({
+          id: 'wheatProduction',
+          value: 2,
+          type: 'bonus',
+          source: 'oasis',
+          scope: 'local',
+          tileId,
+          sourceSpecifier,
+        }),
+      );
+
+      const result = calculateComputedEffect(
+        'wheatProduction',
+        [wheatField, grainMill, bakery, ...oasisEffects],
+        tileId,
+      );
+
+      expect(result.total).toBe(6300);
     });
 
     test('base + population (negative building base) – total=50, population=50, limit=0', () => {
@@ -295,12 +360,11 @@ describe('calculateComputedEffect – woodProduction', () => {
       const result = calculateComputedEffect(
         'wheatProduction',
         effects,
-        villageId,
+        tileId,
       );
 
       expect(result.total).toBe(50);
       expect(result.population).toBe(50);
-      expect(result.buildingWheatLimit).toBe(50);
     });
 
     test('base + population + bonus + booster – total=100, population=50, limit=50', () => {
@@ -316,12 +380,11 @@ describe('calculateComputedEffect – woodProduction', () => {
       const result = calculateComputedEffect(
         'wheatProduction',
         effects,
-        villageId,
+        tileId,
       );
 
       expect(result.total).toBe(100);
       expect(result.population).toBe(50);
-      expect(result.buildingWheatLimit).toBe(100);
     });
 
     test('base + population + bonus + booster + server – total=250, population=50, limit=200', () => {
@@ -338,12 +401,11 @@ describe('calculateComputedEffect – woodProduction', () => {
       const result = calculateComputedEffect(
         'wheatProduction',
         effects,
-        villageId,
+        tileId,
       );
 
       expect(result.total).toBe(250);
       expect(result.population).toBe(50);
-      expect(result.buildingWheatLimit).toBe(250);
     });
 
     test('base + troops consumption – total=75', () => {
@@ -352,8 +414,8 @@ describe('calculateComputedEffect – woodProduction', () => {
         value: 25,
         type: 'base',
         source: 'troops',
-        scope: 'village',
-        villageId,
+        scope: 'local',
+        tileId,
         sourceSpecifier: null,
       };
 
@@ -361,7 +423,7 @@ describe('calculateComputedEffect – woodProduction', () => {
       const result = calculateComputedEffect(
         'wheatProduction',
         effects,
-        villageId,
+        tileId,
       );
 
       // summedBuildingEffectBasePositiveValue = 100
@@ -379,8 +441,8 @@ describe('calculateComputedEffect – woodProduction', () => {
         value: 10,
         type: 'base',
         source: 'artifact',
-        scope: 'village',
-        villageId,
+        scope: 'local',
+        tileId,
         sourceSpecifier: null,
       };
       const artifactBonus: ArtifactEffect = {
@@ -388,8 +450,8 @@ describe('calculateComputedEffect – woodProduction', () => {
         value: 1.1,
         type: 'bonus',
         source: 'artifact',
-        scope: 'village',
-        villageId,
+        scope: 'local',
+        tileId,
         sourceSpecifier: null,
       };
 
@@ -398,11 +460,7 @@ describe('calculateComputedEffect – woodProduction', () => {
         artifactBase,
         artifactBonus,
       ];
-      const result = calculateComputedEffect(
-        'woodProduction',
-        effects,
-        villageId,
-      );
+      const result = calculateComputedEffect('woodProduction', effects, tileId);
 
       // baseValue = 100. artifactBase = 10. artifactBonus = 1.1.
       // combinedDelta = (artifactBonus - 1) = 0.1
@@ -417,8 +475,8 @@ describe('calculateComputedEffect – woodProduction', () => {
         value: 15,
         type: 'base',
         source: 'oasis',
-        scope: 'village',
-        villageId,
+        scope: 'local',
+        tileId,
         sourceSpecifier: null,
       };
       const oasisBonus: OasisEffect = {
@@ -426,49 +484,47 @@ describe('calculateComputedEffect – woodProduction', () => {
         value: 1.2,
         type: 'bonus',
         source: 'oasis',
-        scope: 'village',
-        villageId,
+        scope: 'local',
+        tileId,
         sourceSpecifier: null,
       };
 
       const effects = [woodProductionBaseEffectMock, oasisBase, oasisBonus];
-      const result = calculateComputedEffect(
-        'woodProduction',
-        effects,
-        villageId,
-      );
+      const result = calculateComputedEffect('woodProduction', effects, tileId);
 
       // baseValue = 100. oasisBonus = 1.2.
       // oasisBonus = floor(100 * 0.2) = 20
       // total = 100 + 20 + 15 = 135
-      // If woodProductionBaseEffectMock value is not 100, this will fail.
-      // Received 134 means maybe baseValue was 99? 99 * 0.2 = 19.8 -> 19. 99 + 19 + 15 = 133. No.
-      // Maybe baseValue was 100 and oasisBonus was something that floored to 19?
-      // Wait, let's just use explicit values to be sure.
-      expect(result.total).toBeGreaterThanOrEqual(134);
+      expect(result.total).toBe(135);
     });
 
-    test('waterworks special case (applies to oasis)', () => {
-      const waterworksEffect: VillageBuildingEffect = {
+    test('waterworks is not special-cased during calculation', () => {
+      const oasisBonus: OasisEffect = {
         id: 'woodProduction',
         value: 1.25,
         type: 'bonus',
+        source: 'oasis',
+        scope: 'local',
+        tileId,
+        sourceSpecifier: null,
+      };
+      const waterworksEffect: VillageBuildingEffect = {
+        id: 'woodProduction',
+        value: 2,
+        type: 'bonus-booster',
         source: 'building',
-        buildingId: 'WATERWORKS',
-        scope: 'village',
-        villageId,
+        scope: 'local',
+        tileId,
         sourceSpecifier: null,
       };
 
-      const effects = [woodProductionBaseEffectMock, waterworksEffect];
-      const result = calculateComputedEffect(
-        'woodProduction',
-        effects,
-        villageId,
-      );
+      const effects = [
+        woodProductionBaseEffectMock,
+        oasisBonus,
+        waterworksEffect,
+      ];
+      const result = calculateComputedEffect('woodProduction', effects, tileId);
 
-      // waterworks acts as oasis bonus
-      // total = 100 + floor(100 * 0.25) = 125
       expect(result.total).toBe(125);
     });
 
@@ -479,20 +535,85 @@ describe('calculateComputedEffect – woodProduction', () => {
         type: 'bonus',
         source: 'tribe',
         scope: 'global',
-        villageId,
+        tileId,
         sourceSpecifier: null,
       };
 
       const effects = [woodProductionBaseEffectMock, tribeEffect];
-      const result = calculateComputedEffect(
-        'woodProduction',
-        effects,
-        villageId,
-      );
+      const result = calculateComputedEffect('woodProduction', effects, tileId);
 
-      // tribe acts as hero bonus
+      // tribe acts as a static game-value bonus
       // total = 100 + floor(100 * 0.5) = 150
       expect(result.total).toBe(150);
+    });
+
+    test('tribal merchant capacity base with building bonus', () => {
+      const tribalMerchantCapacityBase: TribalEffect = {
+        id: 'merchantCapacity',
+        value: 750,
+        type: 'base',
+        source: 'tribe',
+        scope: 'global',
+        sourceSpecifier: null,
+      };
+      const tradeOfficeBonus: VillageBuildingEffect = {
+        id: 'merchantCapacity',
+        value: 1.2,
+        type: 'bonus',
+        source: 'building',
+        scope: 'local',
+        tileId,
+        sourceSpecifier: 37,
+      };
+
+      const result = calculateComputedEffect(
+        'merchantCapacity',
+        [tribalMerchantCapacityBase, tradeOfficeBonus],
+        tileId,
+      );
+
+      expect(result.total).toBe(900);
+    });
+
+    test('tribal merchant capacity base with multiple bonuses compounds', () => {
+      const tribalMerchantCapacityBase: TribalEffect = {
+        id: 'merchantCapacity',
+        value: 750,
+        type: 'base',
+        source: 'tribe',
+        scope: 'global',
+        sourceSpecifier: null,
+      };
+      const tradeOfficeBonus: VillageBuildingEffect = {
+        id: 'merchantCapacity',
+        value: 1.2,
+        type: 'bonus',
+        source: 'building',
+        scope: 'local',
+        tileId,
+        sourceSpecifier: 37,
+      };
+      const heroMerchantCapacityBonus: HeroEffect = {
+        id: 'merchantCapacity',
+        value: 1.5,
+        type: 'bonus',
+        source: 'hero',
+        scope: 'local',
+        tileId,
+        sourceSpecifier: null,
+      };
+
+      const result = calculateComputedEffect(
+        'merchantCapacity',
+        [
+          tribalMerchantCapacityBase,
+          tradeOfficeBonus,
+          heroMerchantCapacityBonus,
+        ],
+        tileId,
+      );
+
+      expect(result.total).toBe(1350);
     });
 
     test('troops source base (non-wheat)', () => {
@@ -501,17 +622,13 @@ describe('calculateComputedEffect – woodProduction', () => {
         value: 5,
         type: 'base',
         source: 'troops',
-        scope: 'village',
-        villageId,
+        scope: 'local',
+        tileId,
         sourceSpecifier: 0,
       };
 
       const effects = [woodProductionBaseEffectMock, troopBase];
-      const result = calculateComputedEffect(
-        'woodProduction',
-        effects,
-        villageId,
-      );
+      const result = calculateComputedEffect('woodProduction', effects, tileId);
 
       expect(result.total).toBe(105);
     });
@@ -522,17 +639,13 @@ describe('calculateComputedEffect – woodProduction', () => {
         value: 200,
         type: 'base',
         source: 'building',
-        scope: 'village',
-        villageId: 15,
+        scope: 'local',
+        tileId: 15,
         sourceSpecifier: null,
       };
 
       const effects = [woodProductionBaseEffectMock, otherVillageEffect];
-      const result = calculateComputedEffect(
-        'woodProduction',
-        effects,
-        villageId,
-      );
+      const result = calculateComputedEffect('woodProduction', effects, tileId);
 
       expect(result.total).toBe(100);
     });
@@ -543,8 +656,8 @@ describe('calculateComputedEffect – woodProduction', () => {
         value: 0.9,
         type: 'bonus',
         source: 'building',
-        scope: 'village',
-        villageId,
+        scope: 'local',
+        tileId,
         sourceSpecifier: null,
       };
 
@@ -552,10 +665,39 @@ describe('calculateComputedEffect – woodProduction', () => {
       const result = calculateComputedEffect(
         'buildingDuration',
         effects,
-        villageId,
+        tileId,
       );
 
       expect(result.total).toBe(0.9);
+    });
+
+    test('modifier only with multiple bonuses compounds', () => {
+      const buildingBonusEffect: VillageEffect = {
+        id: 'buildingDuration',
+        value: 0.9,
+        type: 'bonus',
+        source: 'building',
+        scope: 'local',
+        tileId,
+        sourceSpecifier: null,
+      };
+      const artifactBonusEffect: ArtifactEffect = {
+        id: 'buildingDuration',
+        value: 0.9,
+        type: 'bonus',
+        source: 'artifact',
+        scope: 'local',
+        tileId,
+        sourceSpecifier: null,
+      };
+
+      const result = calculateComputedEffect(
+        'buildingDuration',
+        [buildingBonusEffect, artifactBonusEffect],
+        tileId,
+      );
+
+      expect(result.total).toBe(0.81);
     });
 
     test('global and server scope effects', () => {
@@ -569,11 +711,7 @@ describe('calculateComputedEffect – woodProduction', () => {
       };
 
       const effects = [woodProductionBaseEffectMock, globalEffect];
-      const result = calculateComputedEffect(
-        'woodProduction',
-        effects,
-        villageId,
-      );
+      const result = calculateComputedEffect('woodProduction', effects, tileId);
 
       expect(result.total).toBe(110);
     });

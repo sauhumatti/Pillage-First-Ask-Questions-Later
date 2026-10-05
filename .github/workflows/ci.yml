@@ -9,11 +9,9 @@ on:
     types: [opened, synchronize, reopened]
     branches:
       - master
-      - develop
   push:
     branches:
       - master
-      - develop
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -32,12 +30,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup environment (node + install)
         uses: ./.github/actions/node-setup
+
+      - name: Generate API route types
+        run: npm run generate-api-route-types
 
       - name: Run type check
         run: npx turbo run type-check
@@ -47,9 +48,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup environment (node + install)
         uses: ./.github/actions/node-setup
@@ -62,9 +63,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup environment (node + install)
         uses: ./.github/actions/node-setup
@@ -72,14 +73,28 @@ jobs:
       - name: Run format check
         run: npx turbo run format:check
 
+  zizmor:
+    name: Zizmor GitHub Actions check
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run zizmor
+        uses: zizmorcore/zizmor-action@6599ee8b7a49aef6a770f63d261d214911a7ce02 # v0.6.0
+
   localize:
     name: Localization check
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup environment (node + install)
         uses: ./.github/actions/node-setup
@@ -92,9 +107,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup environment (node + install)
         uses: ./.github/actions/node-setup

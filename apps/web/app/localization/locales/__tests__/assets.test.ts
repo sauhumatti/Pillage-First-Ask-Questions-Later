@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest';
+import { items } from '@pillage-first/game-assets/items';
 import { icons } from 'app/components/icons/icons';
 import enUSAssets from '../en-US/assets.json' with { type: 'json' };
 
@@ -7,6 +8,20 @@ const locales = [{ locale: 'en-US', data: enUSAssets }];
 // map to array-of-tuples [locale, data] so describe.each can use %s for the locale string
 const localesArr = locales.map(({ locale, data }) => [locale, data] as const);
 
+const getMissingKeys = (
+  requiredKeys: string[],
+  candidateKeys: string[],
+): string[] => {
+  return requiredKeys.filter((key) => !candidateKeys.includes(key));
+};
+
+const getUnexpectedKeys = (
+  allowedKeys: string[],
+  candidateKeys: string[],
+): string[] => {
+  return candidateKeys.filter((key) => !allowedKeys.includes(key));
+};
+
 describe('localization completeness check for assets.json', () => {
   describe.each(localesArr)('locale: %s', (_locale, data) => {
     test('units should have NAME, NAME_other and DESCRIPTION set', () => {
@@ -14,15 +29,15 @@ describe('localization completeness check for assets.json', () => {
         expect(
           Object.hasOwn(unitData, 'NAME'),
           `Missing NAME in UNITS.${unitKey}`,
-        ).toBeTruthy();
+        ).toBe(true);
         expect(
           Object.hasOwn(unitData, 'NAME_other'),
           `Missing NAME_other in UNITS.${unitKey}`,
-        ).toBeTruthy();
+        ).toBe(true);
         expect(
           Object.hasOwn(unitData, 'DESCRIPTION'),
           `Missing DESCRIPTION in UNITS.${unitKey}`,
-        ).toBeTruthy();
+        ).toBe(true);
 
         expect(unitData.NAME, `UNITS.${unitKey}.NAME is empty`).not.toBe('');
         expect(
@@ -43,15 +58,15 @@ describe('localization completeness check for assets.json', () => {
         expect(
           Object.hasOwn(buildingData, 'NAME'),
           `Missing NAME in BUILDINGS.${buildingKey}`,
-        ).toBeTruthy();
+        ).toBe(true);
         expect(
           Object.hasOwn(buildingData, 'NAME_other'),
           `Missing NAME_other in BUILDINGS.${buildingKey}`,
-        ).toBeTruthy();
+        ).toBe(true);
         expect(
           Object.hasOwn(buildingData, 'DESCRIPTION'),
           `Missing DESCRIPTION in BUILDINGS.${buildingKey}`,
-        ).toBeTruthy();
+        ).toBe(true);
 
         expect(
           buildingData.NAME,
@@ -68,27 +83,44 @@ describe('localization completeness check for assets.json', () => {
       }
     });
 
+    test('items should match game asset item definitions', () => {
+      const itemDefinitionKeys = items.map((item) => item.name).sort();
+      const localizedItemKeys = Object.keys(data.ITEMS).sort();
+
+      expect(
+        getMissingKeys(itemDefinitionKeys, localizedItemKeys),
+        'Missing ITEMS keys',
+      ).toEqual([]);
+
+      expect(
+        getUnexpectedKeys(itemDefinitionKeys, localizedItemKeys),
+        'Unexpected ITEMS keys',
+      ).toEqual([]);
+    });
+
     test('items should have NAME, NAME_other and DESCRIPTION set', () => {
       for (const [itemKey, itemData] of Object.entries(data.ITEMS)) {
         expect(
           Object.hasOwn(itemData, 'NAME'),
           `Missing NAME in ITEMS.${itemKey}`,
-        ).toBeTruthy();
+        ).toBe(true);
         expect(
           Object.hasOwn(itemData, 'NAME_other'),
           `Missing NAME_other in ITEMS.${itemKey}`,
-        ).toBeTruthy();
+        ).toBe(true);
         expect(
           Object.hasOwn(itemData, 'DESCRIPTION'),
           `Missing DESCRIPTION in ITEMS.${itemKey}`,
-        ).toBeTruthy();
+        ).toBe(true);
         expect(itemData.NAME, `ITEMS.${itemKey}.NAME is empty`).not.toBe('');
         expect(
           itemData.NAME_other,
           `ITEMS.${itemKey}.NAME_other is empty`,
         ).not.toBe('');
-        // TODO: Fill in the DESCRIPTION fields
-        // expect(itemData.NAME, `ITEMS.${itemKey}.DESCRIPTION is empty`).not.toBe('');
+        expect(
+          itemData.DESCRIPTION,
+          `ITEMS.${itemKey}.DESCRIPTION is empty`,
+        ).not.toBe('');
       }
     });
 

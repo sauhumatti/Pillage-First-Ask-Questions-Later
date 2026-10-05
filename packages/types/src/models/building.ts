@@ -46,6 +46,7 @@ export const buildingIdSchema = z
     'GREAT_STABLE',
     'WORKSHOP',
     'HOSPITAL',
+    'ASCLEPEION',
     'CLAY_PIT',
     'WHEAT_FIELD',
     'WOODCUTTER',
@@ -85,6 +86,8 @@ export const buildingIdSchema = z
     'TOWN_HALL',
     'EMBASSY',
     'TREASURY',
+    'GATHERERS_HUT',
+    'HUNTERS_LODGE',
   ])
   .meta({ id: 'BuildingId' });
 
@@ -98,6 +101,7 @@ export type TroopTrainingBuildingId = Extract<
   | 'GREAT_STABLE'
   | 'WORKSHOP'
   | 'HOSPITAL'
+  | 'ASCLEPEION'
   | 'RESIDENCE'
 >;
 
@@ -108,7 +112,7 @@ export type Building = {
   buildingDurationBase: number;
   buildingDurationModifier: number;
   buildingDurationReduction: number;
-  effects: BuildingEffect[];
+  effects: (tribe: Tribe) => BuildingEffect[];
   buildingRequirements: BuildingRequirement[];
   baseBuildingCost: number[];
   category: BuildingCategory;

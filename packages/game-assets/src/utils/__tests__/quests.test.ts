@@ -3,11 +3,20 @@ import { getQuestRequirements, getQuestRewards } from '../quests';
 
 describe('quest utils', () => {
   describe(getQuestRequirements, () => {
-    test('troopCount requirement parsed correctly', () => {
-      const reqs = getQuestRequirements('troopCount-5');
+    test('queuedTroopCount requirement parsed correctly', () => {
+      const reqs = getQuestRequirements('queuedTroopCount-5');
       expect(reqs).toHaveLength(1);
       expect(reqs[0]).toStrictEqual({
-        type: 'troop-count',
+        type: 'queued-troop-count',
+        count: 5,
+      });
+    });
+
+    test('queuedTroopCountById requirement parsed correctly', () => {
+      const reqs = getQuestRequirements('queuedTroopCountById-LEGIONNAIRE-5');
+      expect(reqs).toHaveLength(1);
+      expect(reqs[0]).toStrictEqual({
+        type: 'queued-troop-count-by-id',
         count: 5,
       });
     });
@@ -19,6 +28,43 @@ describe('quest utils', () => {
         type: 'adventure-count',
         count: 3,
       });
+    });
+
+    test('captureAnimalCountById requirement parsed correctly', () => {
+      const reqs = getQuestRequirements('captureAnimalCountById-RAT-5');
+      expect(reqs).toHaveLength(1);
+      expect(reqs[0]).toStrictEqual({
+        type: 'capture-animal-count-by-id',
+        unitId: 'RAT',
+        count: 5,
+      });
+    });
+
+    test('captureAnimalKindCount requirement parsed correctly', () => {
+      const reqs = getQuestRequirements('captureAnimalKindCount-10');
+      expect(reqs).toHaveLength(1);
+      expect(reqs[0]).toStrictEqual({
+        type: 'capture-animal-kind-count',
+        count: 10,
+      });
+    });
+
+    test('gatheredResourceCount requirement parsed correctly', () => {
+      const reqs = getQuestRequirements('gatheredResourceCount-100');
+      expect(reqs).toHaveLength(1);
+      expect(reqs[0]).toStrictEqual({
+        type: 'gathered-resource-count',
+        count: 100,
+      });
+    });
+
+    test('kill count requirements preserve their distinct reward units', () => {
+      expect(getQuestRequirements('killCount-10')).toStrictEqual([
+        { type: 'kill-count', count: 10 },
+      ]);
+      expect(
+        getQuestRequirements('unitKillCount-LEGIONNAIRE-10'),
+      ).toStrictEqual([{ type: 'unit-kill-count', count: 10 }]);
     });
 
     test('building requirement parsed correctly (oneOf)', () => {
@@ -45,12 +91,21 @@ describe('quest utils', () => {
   });
 
   describe(getQuestRewards, () => {
-    test('troopCount rewards produce resources = count * 10', () => {
-      const rewards = getQuestRewards('troopCount-5');
+    test('queuedTroopCount rewards produce resources = count * 10', () => {
+      const rewards = getQuestRewards('queuedTroopCount-5');
       expect(rewards).toHaveLength(1);
       expect(rewards[0]).toStrictEqual({
         type: 'resources',
         amount: 5 * 10,
+      });
+    });
+
+    test('queuedTroopCountById rewards produce resources = count * 100', () => {
+      const rewards = getQuestRewards('queuedTroopCountById-LEGIONNAIRE-5');
+      expect(rewards).toHaveLength(1);
+      expect(rewards[0]).toStrictEqual({
+        type: 'resources',
+        amount: 5 * 100,
       });
     });
 
@@ -61,6 +116,48 @@ describe('quest utils', () => {
         type: 'hero-exp',
         amount: 4 * 10,
       });
+    });
+
+    test('captureAnimalCountById rewards produce hero-exp = count * 10', () => {
+      const rewards = getQuestRewards('captureAnimalCountById-RAT-5');
+      expect(rewards).toHaveLength(1);
+      expect(rewards[0]).toStrictEqual({
+        type: 'hero-exp',
+        amount: 5 * 10,
+      });
+    });
+
+    test('captureAnimalKindCount rewards produce hero-exp = count * 10', () => {
+      const rewards = getQuestRewards('captureAnimalKindCount-10');
+      expect(rewards).toHaveLength(1);
+      expect(rewards[0]).toStrictEqual({
+        type: 'hero-exp',
+        amount: 10 * 10,
+      });
+    });
+
+    test('gatheredResourceCount rewards produce scaled hero-exp', () => {
+      const rewards = getQuestRewards('gatheredResourceCount-500');
+      expect(rewards).toHaveLength(1);
+      expect(rewards[0]).toStrictEqual({
+        type: 'hero-exp',
+        amount: 5,
+      });
+    });
+
+    test('kill count rewards use the correct resource multipliers', () => {
+      expect(getQuestRewards('killCount-10')).toStrictEqual([
+        { type: 'resources', amount: 100 },
+      ]);
+      expect(getQuestRewards('unitKillCount-LEGIONNAIRE-10')).toStrictEqual([
+        { type: 'resources', amount: 1000 },
+      ]);
+    });
+
+    test('gathered resources always grant at least one experience', () => {
+      expect(getQuestRewards('gatheredResourceCount-1')).toStrictEqual([
+        { type: 'hero-exp', amount: 1 },
+      ]);
     });
 
     test('woodcutter oneOf level 1 (effectiveLevel=0) returns base/2', () => {

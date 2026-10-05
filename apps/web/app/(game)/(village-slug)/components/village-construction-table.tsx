@@ -6,9 +6,13 @@ import { IoIosArrowRoundForward } from 'react-icons/io';
 import { LuConstruction } from 'react-icons/lu';
 import { Countdown } from 'app/(game)/(village-slug)/components/countdown';
 import { useCancelConstruction } from 'app/(game)/(village-slug)/hooks/use-cancel-construction';
+import { useScheduledBuildingUpgrades } from 'app/(game)/(village-slug)/hooks/use-scheduled-building-upgrades';
 import { useTribe } from 'app/(game)/(village-slug)/hooks/use-tribe';
-import { CurrentVillageBuildingQueueContext } from 'app/(game)/(village-slug)/providers/current-village-building-queue-provider';
-import { Button } from 'app/components/ui/button.tsx';
+import {
+  CurrentVillageBuildingQueueContext,
+  getBuildingUpgradeQueueEntryKey,
+} from 'app/(game)/(village-slug)/providers/current-village-building-queue-context';
+import { Button } from 'app/components/ui/button';
 import {
   Table,
   TableBody,
@@ -21,9 +25,7 @@ import {
 export const VillageConstructionTable = () => {
   const { t } = useTranslation();
   const tribe = useTribe();
-  const { currentVillageBuildingEvents } = use(
-    CurrentVillageBuildingQueueContext,
-  );
+  const { buildingUpgradeEvents } = use(CurrentVillageBuildingQueueContext);
 
   const totalSlotsCount = 5;
   const availableSlotsCount = tribe === 'romans' ? 2 : 1;
@@ -31,14 +33,14 @@ export const VillageConstructionTable = () => {
   const slots = useMemo(() => {
     const emptySlotsCount = Math.max(
       0,
-      totalSlotsCount - currentVillageBuildingEvents.length,
+      totalSlotsCount - buildingUpgradeEvents.length,
     );
-    const base = currentVillageBuildingEvents.map((event) => ({
+    const base = buildingUpgradeEvents.map((event) => ({
       type: 'building' as const,
       event,
     }));
     const empties = Array.from({ length: emptySlotsCount }, (_, i) => {
-      const slotIndex = currentVillageBuildingEvents.length + i;
+      const slotIndex = buildingUpgradeEvents.length + i;
       const isFree = slotIndex < availableSlotsCount;
       return {
         type: 'empty' as const,
@@ -47,9 +49,10 @@ export const VillageConstructionTable = () => {
       };
     });
     return [...base, ...empties];
-  }, [currentVillageBuildingEvents, availableSlotsCount]);
+  }, [buildingUpgradeEvents, availableSlotsCount]);
 
   const { mutate: cancelConstruction } = useCancelConstruction();
+  const { cancelScheduledBuildingUpgrade } = useScheduledBuildingUpgrades();
 
   return (
     <div className="w-full overflow-x-auto">
@@ -65,8 +68,11 @@ export const VillageConstructionTable = () => {
         <TableBody>
           {slots.slice(0, totalSlotsCount).map((slot) => {
             if (slot.type === 'building') {
+              const isScheduled =
+                slot.event.type === 'scheduledBuildingUpgrade';
+
               return (
-                <TableRow key={slot.event.id}>
+                <TableRow key={getBuildingUpgradeQueueEntryKey(slot.event)}>
                   <TableCell>
                     <span className="inline-flex items-center gap-2">
                       <LuConstruction className="text-lg text-gray-500" />
@@ -79,15 +85,26 @@ export const VillageConstructionTable = () => {
                     {slot.event.level}
                   </TableCell>
                   <TableCell className="whitespace-nowrap">
-                    <Countdown
-                      endsAt={slot.event.startsAt + slot.event.duration}
-                    />
+                    {'startsAt' in slot.event ? (
+                      <Countdown
+                        endsAt={slot.event.startsAt + slot.event.duration}
+                      />
+                    ) : (
+                      t('In queue')
+                    )}
                   </TableCell>
                   <TableCell>
                     <Button
-                      onClick={() =>
-                        cancelConstruction({ eventId: slot.event.id })
-                      }
+                      onClick={() => {
+                        if (isScheduled) {
+                          cancelScheduledBuildingUpgrade({
+                            scheduledUpgradeId: slot.event.id,
+                          });
+                          return;
+                        }
+
+                        cancelConstruction({ eventId: slot.event.id });
+                      }}
                       size="fit"
                     >
                       {t('Cancel')}

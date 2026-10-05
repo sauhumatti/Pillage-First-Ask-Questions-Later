@@ -2,6 +2,7 @@ import { Activity, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BiWorld } from 'react-icons/bi';
 import { CiImport } from 'react-icons/ci';
+import { FaRedditAlien, FaRss } from 'react-icons/fa';
 import { FaDiscord, FaGithub, FaRegNewspaper } from 'react-icons/fa6';
 import { GrHelpBook } from 'react-icons/gr';
 import { HiOutlineMenu } from 'react-icons/hi';
@@ -37,19 +38,19 @@ export const MobileNavigation = () => {
         <button
           className="p-2 bg-muted rounded-md transition-transform active:scale-95 active:shadow-inner"
           type="button"
-          aria-label="Menu"
+          aria-label={t('Open navigation menu')}
           onClick={openModal}
         >
           <HiOutlineMenu className="text-xl text-foreground" />
         </button>
         <Activity mode={isOpen ? 'visible' : 'hidden'}>
-          <div className="fixed inset-0 z-50 bg-background/50 backdrop-blur-xs">
+          <div className="fixed inset-0 z-50 bg-background/50 p-safe backdrop-blur-xs">
             <div className="m-2 bg-card rounded-lg h-[calc(100%-1rem)] p-4 overflow-y-auto scrollbar-hidden border border-border shadow-2xl">
               <div className="relative flex flex-col gap-2 w-full h-full">
                 <button
                   className="absolute -top-2 -right-2 p-2 bg-muted rounded-md transition-transform active:scale-95 active:shadow-inner"
                   type="button"
-                  aria-label="Menu"
+                  aria-label={t('Close navigation menu')}
                   onClick={closeModal}
                 >
                   <IoCloseOutline className="text-xl text-foreground" />
@@ -72,22 +73,22 @@ export const MobileNavigation = () => {
                     <li>
                       <Link
                         className="inline-flex gap-2 items-center"
-                        to="/game-worlds"
+                        to="/game-worlds/create"
                       >
-                        <BiWorld className="text-muted-foreground text-lg" />
+                        <IoCreate className="text-muted-foreground text-lg" />
                         <Text className="font-medium">
-                          {t('My game worlds')}
+                          {t('Create a new game world')}
                         </Text>
                       </Link>
                     </li>
                     <li>
                       <Link
                         className="inline-flex gap-2 items-center"
-                        to="/game-worlds/create"
+                        to="/game-worlds"
                       >
-                        <IoCreate className="text-muted-foreground text-lg" />
+                        <BiWorld className="text-muted-foreground text-lg" />
                         <Text className="font-medium">
-                          {t('Create a new game world')}
+                          {t('Your game worlds')}
                         </Text>
                       </Link>
                     </li>
@@ -159,26 +160,51 @@ export const MobileNavigation = () => {
                 <div className="border border-dashed border-border w-full" />
                 <div className="flex flex-col gap-2">
                   <Text className="text-2xs font-semibold uppercase text-muted-foreground">
-                    {t('Community')}
+                    {t('Community & support')}
                   </Text>
-                  <ul className="flex flex-col gap-2">
+                  <ul className="flex flex-wrap gap-2">
                     <li>
                       <a
                         href="https://discord.gg/Ep7NKVXUZA"
-                        rel="noopener"
-                        className="inline-flex gap-2 items-center"
+                        rel="noopener noreferrer nofollow"
+                        target="_blank"
+                        className="flex items-center justify-center gap-2 rounded-full bg-[#5865F2] shadow-md p-2 hover:opacity-80 transition-opacity"
+                        aria-label="Discord"
                       >
-                        <FaDiscord className="text-muted-foreground text-lg" />
-                        <Text className="font-medium">Discord</Text>
+                        <FaDiscord className="text-2xl md:text-3xl text-white" />
+                      </a>
+                    </li>
+                    <li>
+                      <a
+                        href="https://www.reddit.com/r/PillageFirst/"
+                        rel="noopener noreferrer nofollow"
+                        target="_blank"
+                        className="flex items-center justify-center gap-2 rounded-full bg-[#ff5700] shadow-md p-2 hover:opacity-80 transition-opacity"
+                        aria-label="Reddit"
+                      >
+                        <FaRedditAlien className="text-2xl md:text-3xl text-white" />
                       </a>
                     </li>
                     <li>
                       <a
                         href="https://github.com/jurerotar/Pillage-First-Ask-Questions-Later"
-                        className="inline-flex gap-2 items-center"
+                        rel="noopener noreferrer nofollow"
+                        target="_blank"
+                        className="flex items-center justify-center gap-2 rounded-full bg-[#24292e] shadow-md p-2 hover:opacity-80 transition-opacity"
+                        aria-label="GitHub"
                       >
-                        <FaGithub className="text-muted-foreground text-lg" />
-                        <Text className="font-medium">GitHub</Text>
+                        <FaGithub className="text-2xl md:text-3xl text-white" />
+                      </a>
+                    </li>
+                    <li>
+                      <a
+                        href="https://pillagefirst.com/rss.xml"
+                        rel="noopener noreferrer nofollow"
+                        target="_blank"
+                        className="flex items-center justify-center gap-2 rounded-full bg-[#f26522] shadow-md p-2 hover:opacity-80 transition-opacity"
+                        aria-label="RSS"
+                      >
+                        <FaRss className="text-2xl md:text-3xl text-white" />
                       </a>
                     </li>
                   </ul>
@@ -187,12 +213,10 @@ export const MobileNavigation = () => {
                 <div className="border border-dashed border-border w-full" />
                 <div className="flex justify-center gap-2">
                   <Link to="/game-worlds/create">
-                    <Button>{t('Try now')}</Button>
+                    <Button>{t('Create new world')}</Button>
                   </Link>
                   <Link to="/game-worlds">
-                    <Button variant="outline">
-                      {t('Existing game worlds')}
-                    </Button>
+                    <Button variant="outline">{t('Your game worlds')}</Button>
                   </Link>
                 </div>
               </div>

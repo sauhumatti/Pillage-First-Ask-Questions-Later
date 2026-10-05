@@ -3,10 +3,12 @@ import {
   createContext,
   Fragment,
   type PropsWithChildren,
+  startTransition,
   use,
   useMemo,
 } from 'react';
-import { Trans, useTranslation } from 'react-i18next';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router';
 import {
   type CalculatedCumulativeEffect,
   calculateBuildingEffectValues,
@@ -14,83 +16,116 @@ import {
   getBuildingDefinition,
 } from '@pillage-first/game-assets/utils/buildings';
 import type { Building } from '@pillage-first/types/models/building';
-import type { BuildingField } from '@pillage-first/types/models/building-field';
 import type { Effect } from '@pillage-first/types/models/effect';
 import { formatNumber, formatPercentage } from '@pillage-first/utils/format';
-import { BuildingFieldContext } from 'app/(game)/(village-slug)/(village)/(...building-field-id)/providers/building-field-provider';
-import { useBuildingVirtualLevel } from 'app/(game)/(village-slug)/(village)/hooks/use-building-virtual-level';
-import type {
-  AssessedBuildingRequirement,
-  assessBuildingConstructionReadiness,
-} from 'app/(game)/(village-slug)/(village)/utils/building-requirements';
+import {
+  type AssessedBuildingRequirement,
+  assessBuildingRequirements,
+} from '@pillage-first/utils/game/building-requirements';
+import { VillageBuildingLink } from 'app/(game)/(village-slug)/(village)/(...building-field-id)/components/village-building-link';
+import { BuildingFieldContext } from 'app/(game)/(village-slug)/(village)/(...building-field-id)/providers/building-field-context';
+import { useBuildingActions } from 'app/(game)/(village-slug)/(village)/hooks/use-building-actions';
+import { ErrorBag } from 'app/(game)/(village-slug)/components/error-bag';
 import { Resources } from 'app/(game)/(village-slug)/components/resources';
-import { VillageBuildingLink } from 'app/(game)/(village-slug)/components/village-building-link';
 import { useCurrentVillage } from 'app/(game)/(village-slug)/hooks/current-village/use-current-village';
-import { useComputedEffect } from 'app/(game)/(village-slug)/hooks/use-computed-effect';
-import { useEffectServerValue } from 'app/(game)/(village-slug)/hooks/use-effect-server-value';
+import { useBuildingConstructionErrorBag } from 'app/(game)/(village-slug)/hooks/use-building-construction-error-bag';
+import { usePreferences } from 'app/(game)/(village-slug)/hooks/use-preferences';
+import { useTribe } from 'app/(game)/(village-slug)/hooks/use-tribe';
+import { CurrentVillageBuildingQueueContext } from 'app/(game)/(village-slug)/providers/current-village-building-queue-context';
+import { CurrentVillageLiveResourcesContext } from 'app/(game)/(village-slug)/providers/current-village-live-resources-context';
+import { InformationPopover } from 'app/(game)/components/information-popover';
 import { Icon } from 'app/components/icon';
 import { Text } from 'app/components/text';
 import { Alert } from 'app/components/ui/alert';
+import { Button } from 'app/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from 'app/components/ui/dialog';
+import { useDialog } from 'app/hooks/use-dialog';
 import { formatTime } from 'app/utils/time';
 
 type BuildingCardContextState = {
   buildingId: Building['id'];
   building: Building;
+  buildingInstanceNumber?: number;
   buildingConstructionReadinessAssessment?: ReturnType<
-    typeof assessBuildingConstructionReadiness
+    typeof assessBuildingRequirements
   >;
+  shouldAllowUnmetRequirementsForScheduledConstruction?: boolean;
 };
 
-export const BuildingCardContext = createContext<BuildingCardContextState>(
+const BuildingCardContext = createContext<BuildingCardContextState>(
   {} as BuildingCardContextState,
 );
 
 type BuildingCardProps = {
   buildingId: Building['id'];
+  buildingInstanceNumber?: number;
   buildingConstructionReadinessAssessment?: ReturnType<
-    typeof assessBuildingConstructionReadiness
+    typeof assessBuildingRequirements
   >;
+  shouldAllowUnmetRequirementsForScheduledConstruction?: boolean;
 };
+
+const unfinishedBuildings = new Set<Building['id']>([
+  'HORSE_DRINKING_TROUGH',
+  'RESIDENCE',
+  'RALLY_POINT',
+  'TOWN_HALL',
+  'EMBASSY',
+  'COMMAND_CENTER',
+  'MARKETPLACE',
+]);
 
 export const BuildingCard = ({
   buildingId,
+  buildingInstanceNumber,
   buildingConstructionReadinessAssessment,
+  shouldAllowUnmetRequirementsForScheduledConstruction,
   children,
 }: PropsWithChildren<BuildingCardProps>) => {
+  const { t } = useTranslation();
   const building = getBuildingDefinition(buildingId);
 
   const value = useMemo(
     () => ({
       buildingId,
       building,
+      buildingInstanceNumber,
       buildingConstructionReadinessAssessment,
+      shouldAllowUnmetRequirementsForScheduledConstruction,
     }),
-    [buildingId, building, buildingConstructionReadinessAssessment],
+    [
+      buildingId,
+      building,
+      buildingInstanceNumber,
+      buildingConstructionReadinessAssessment,
+      shouldAllowUnmetRequirementsForScheduledConstruction,
+    ],
   );
 
   return (
     <BuildingCardContext value={value}>
-      <article className="flex flex-col gap-2">{children}</article>
+      <article className="flex flex-col gap-2 relative">
+        <InformationPopover ariaLabel={t(`BUILDINGS.${building.id}.NAME`)}>
+          <Text>{t(`BUILDINGS.${building.id}.DESCRIPTION`)}</Text>
+        </InformationPopover>
+        {children}
+      </article>
     </BuildingCardContext>
   );
 };
 
-type BuildingOverviewProps = {
-  shouldShowTitle?: boolean;
-  isCompact?: boolean;
-};
-
-export const BuildingOverview = ({
-  shouldShowTitle = true,
-  isCompact = false,
-}: BuildingOverviewProps) => {
+export const BuildingOverview = () => {
   const { t } = useTranslation();
-  const { buildingId } = use(BuildingCardContext);
-  const { buildingFieldId } = use(BuildingFieldContext);
-  const { actualLevel, virtualLevel } = useBuildingVirtualLevel(
-    buildingId,
-    buildingFieldId,
-  );
+  const { buildingId, buildingInstanceNumber } = use(BuildingCardContext);
+  const { actualLevel, virtualLevel, isUpgrading, isDowngrading } =
+    use(BuildingFieldContext);
 
   const { building, isMaxLevel: isActualMaxLevel } = getBuildingDataForLevel(
     buildingId,
@@ -98,35 +133,32 @@ export const BuildingOverview = ({
   );
 
   return (
-    <section data-testid="building-overview-title-section">
-      {shouldShowTitle && (
+    <section className="flex flex-col gap-2">
+      <div className="flex flex-col gap-1 md:max-w-4/5">
         <Text
           as="h2"
           className="inline-flex"
         >
+          {buildingInstanceNumber !== undefined &&
+            buildingInstanceNumber > 1 &&
+            `${buildingInstanceNumber}. `}
           {t(`BUILDINGS.${building.id}.NAME`)}
         </Text>
-      )}
-      {!isCompact && (
-        <Text data-testid="building-overview-building-description">
-          {t(`BUILDINGS.${building.id}.DESCRIPTION`)}
-        </Text>
-      )}
-      {actualLevel !== virtualLevel && (
-        <span
-          data-testid="building-overview-currently-upgrading-span"
-          className="inline-flex text-warning mt-2"
-        >
-          {t('Currently upgrading to level {{level}}', {
-            level: virtualLevel,
-          })}
+      </div>
+      {(isUpgrading || isDowngrading) && (
+        <span className="inline-flex text-warning">
+          {t(
+            isUpgrading
+              ? 'Currently upgrading to level {{level}}'
+              : 'Currently downgrading to level {{level}}',
+            {
+              level: virtualLevel,
+            },
+          )}
         </span>
       )}
       {isActualMaxLevel && (
-        <span
-          data-testid="building-overview-max-level"
-          className="inline-flex text-green-600 mt-2"
-        >
+        <span className="inline-flex text-green-600">
           {t('{{building}} is fully upgraded', {
             building: t(`BUILDINGS.${building.id}.NAME`),
           })}
@@ -138,13 +170,9 @@ export const BuildingOverview = ({
 
 export const BuildingCost = () => {
   const { t } = useTranslation();
-  const { buildingFieldId } = use(BuildingFieldContext);
   const { buildingId } = use(BuildingCardContext);
-  const { virtualLevel, doesBuildingExist } = useBuildingVirtualLevel(
-    buildingId,
-    buildingFieldId,
-  );
-  const { total: buildingDuration } = useComputedEffect('buildingDuration');
+  const { virtualLevel, buildingDuration } = use(BuildingFieldContext);
+  const currentResources = use(CurrentVillageLiveResourcesContext);
 
   const { nextLevelBuildingDuration, nextLevelResourceCost, isMaxLevel } =
     getBuildingDataForLevel(buildingId, virtualLevel);
@@ -158,32 +186,22 @@ export const BuildingCost = () => {
   }
 
   return (
-    <>
-      <section
-        data-testid="building-overview-costs-section"
-        className="flex flex-col pt-2 flex-wrap gap-2 justify-center border-t border-border"
-      >
-        <Text as="h3">
-          {doesBuildingExist
-            ? t('Cost to upgrade to level {{level}}', {
-                level: virtualLevel + 1,
-              })
-            : t('Building construction cost')}
-        </Text>
-        <Resources resources={nextLevelResourceCost} />
-      </section>
-      <section className="flex flex-col flex-wrap gap-2 pt-2 border-t border-border justify-center">
-        <Text as="h3">
-          {t('Construction duration for level {{level}}', {
-            level: virtualLevel + 1,
-          })}
-        </Text>
-        <span className="flex gap-1">
-          <Icon type="buildingDuration" />
+    <section className="flex flex-col flex-wrap gap-2 justify-center">
+      <Text as="h3">{t('Cost and duration')}</Text>
+      <div className="flex gap-2 items-center flex-wrap">
+        <Resources
+          availableResources={currentResources}
+          resources={nextLevelResourceCost}
+        />
+        <span className="flex gap-1 items-center">
+          <Icon
+            type="buildingDuration"
+            className="size-5"
+          />
           {formattedTime}
         </span>
-      </section>
-    </>
+      </div>
+    </section>
   );
 };
 
@@ -191,18 +209,7 @@ export const BuildingUnfinishedNotice = () => {
   const { t } = useTranslation();
   const { buildingId } = use(BuildingCardContext);
 
-  const unfinishedBuildings: Building['id'][] = [
-    'HORSE_DRINKING_TROUGH',
-    'RESIDENCE',
-    'RALLY_POINT',
-    'TOWN_HALL',
-    'EMBASSY',
-    'COMMAND_CENTER',
-    'TRAPPER',
-    'MARKETPLACE',
-  ];
-
-  if (!unfinishedBuildings.includes(buildingId)) {
+  if (!unfinishedBuildings.has(buildingId)) {
     return null;
   }
 
@@ -215,6 +222,69 @@ export const BuildingUnfinishedNotice = () => {
   );
 };
 
+type BuildingScheduledConstructionConfirmationDialogProps = {
+  isOpen: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+};
+
+const BuildingScheduledConstructionConfirmationDialog = ({
+  isOpen,
+  onCancel,
+  onConfirm,
+}: BuildingScheduledConstructionConfirmationDialogProps) => {
+  const { t } = useTranslation();
+  const {
+    buildingConstructionReadinessAssessment,
+    shouldAllowUnmetRequirementsForScheduledConstruction,
+  } = use(BuildingCardContext);
+
+  if (
+    buildingConstructionReadinessAssessment?.canBuild ||
+    !shouldAllowUnmetRequirementsForScheduledConstruction
+  ) {
+    return null;
+  }
+
+  return (
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          onCancel();
+        }
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{t('Confirm queued construction')}</DialogTitle>
+        </DialogHeader>
+        <DialogDescription>
+          <Alert variant="warning">
+            {t(
+              'This building does not currently meet all requirements. You may still schedule it, but construction will only start if all prerequisites are met.',
+            )}
+          </Alert>
+        </DialogDescription>
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={onCancel}
+          >
+            {t('Cancel')}
+          </Button>
+          <Button
+            variant="confirm"
+            onClick={onConfirm}
+          >
+            {t('Confirm')}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 const increasingPercentageBuildingEffects = new Set<Effect['id']>([
   'merchantCapacity',
   'unitSpeedAfter20Fields',
@@ -222,25 +292,25 @@ const increasingPercentageBuildingEffects = new Set<Effect['id']>([
   'clayProduction',
   'ironProduction',
   'wheatProduction',
+  'defenceBonus',
 ]);
 
 type BuildingBenefitProps = {
   effect: CalculatedCumulativeEffect;
   isMaxLevel: boolean;
-  buildingFieldId: BuildingField['id'];
 };
 
 const BuildingBenefit = ({ effect, isMaxLevel }: BuildingBenefitProps) => {
-  const { hasEffect, serverEffectValue } = useEffectServerValue(
-    effect.effectId,
-  );
-
+  const { serverEffectValueByEffectId } = use(BuildingFieldContext);
+  const serverEffectValue = serverEffectValueByEffectId.get(effect.effectId);
   const formattingFn = effect.type === 'base' ? formatNumber : formatPercentage;
 
   const isIncreasing = increasingPercentageBuildingEffects.has(effect.effectId);
 
   const effectModifier =
-    effect.type === 'base' && hasEffect ? serverEffectValue : 1;
+    effect.type === 'base' && serverEffectValue !== undefined
+      ? serverEffectValue
+      : 1;
 
   return (
     <span
@@ -282,9 +352,9 @@ const BuildingBenefit = ({ effect, isMaxLevel }: BuildingBenefitProps) => {
 export const BuildingBenefits = () => {
   const { t } = useTranslation();
   const { building, buildingId } = use(BuildingCardContext);
-  const { buildingFieldId } = use(BuildingFieldContext);
+  const tribe = useTribe();
   const { actualLevel, virtualLevel, doesBuildingExist } =
-    useBuildingVirtualLevel(buildingId, buildingFieldId);
+    use(BuildingFieldContext);
 
   const {
     isMaxLevel,
@@ -297,6 +367,7 @@ export const BuildingBenefits = () => {
   const cumulativeEffects = calculateBuildingEffectValues(
     building,
     actualLevel,
+    tribe,
   );
 
   // In case we have both infantry and cavalry defence, we show combined defence icon instead
@@ -343,7 +414,7 @@ export const BuildingBenefits = () => {
   }, [shouldCombineEffects, cumulativeEffects]);
 
   return (
-    <section className="flex flex-col gap-2 pt-2 justify-center border-t border-border">
+    <section className="flex flex-col gap-2 justify-center">
       <Text as="h3">
         {isMaxLevel
           ? t('Benefits')
@@ -403,7 +474,6 @@ export const BuildingBenefits = () => {
             key={effect.effectId}
             effect={effect}
             isMaxLevel={isMaxLevel}
-            buildingFieldId={buildingFieldId}
           />
         ))}
       </div>
@@ -441,33 +511,43 @@ export const BuildingRequirements = () => {
   });
 
   return (
-    <section className="flex flex-col border-t border-border pt-2 gap-2">
+    <section className="flex flex-col gap-2">
       <Text as="h3">{t('Requirements')}</Text>
       <ul className="flex gap-x-2 flex-wrap">
         {requirementsToDisplay.map(
           (assessedRequirement: AssessedBuildingRequirement, index) => (
             <Fragment key={assessedRequirement.id}>
               <li className="whitespace-nowrap">
-                <Text
-                  className={clsx(
-                    assessedRequirement.fulfilled &&
-                      'text-muted-foreground line-through',
-                  )}
-                >
+                <Text>
                   {assessedRequirement.type === 'amount' &&
                     instanceAlreadyExists && (
-                      <Trans>
-                        <VillageBuildingLink buildingId={buildingId} /> level{' '}
-                        {{ level: maxLevel }}
-                      </Trans>
+                      <>
+                        <VillageBuildingLink buildingId={buildingId} />{' '}
+                        <span
+                          className={clsx(
+                            !assessedRequirement.fulfilled &&
+                              'text-destructive',
+                          )}
+                        >
+                          {t('level {{level}}', { level: maxLevel })}
+                        </span>
+                      </>
                     )}
                   {assessedRequirement.type === 'building' && (
-                    <Trans>
+                    <>
                       <VillageBuildingLink
                         buildingId={assessedRequirement.buildingId}
                       />{' '}
-                      level {{ level: assessedRequirement.level }}
-                    </Trans>
+                      <span
+                        className={clsx(
+                          !assessedRequirement.fulfilled && 'text-destructive',
+                        )}
+                      >
+                        {t('level {{level}}', {
+                          level: assessedRequirement.level,
+                        })}
+                      </span>
+                    </>
                   )}
                   {index !== requirementsToDisplay.length - 1 && ','}
                 </Text>
@@ -476,6 +556,186 @@ export const BuildingRequirements = () => {
           ),
         )}
       </ul>
+    </section>
+  );
+};
+
+type BuildingCardActionsSectionProps = {
+  buildingId: Building['id'];
+  onBuildingConstruction: () => void;
+};
+
+const BuildingCardActionsConstruction = ({
+  buildingId,
+  onBuildingConstruction,
+}: BuildingCardActionsSectionProps) => {
+  const { t } = useTranslation();
+  const { buildingFieldId } = use(BuildingFieldContext);
+  const { getBuildingEventQueue } = use(CurrentVillageBuildingQueueContext);
+  const { errorBag } = useBuildingConstructionErrorBag(
+    buildingId,
+    0,
+    buildingFieldId,
+  );
+  const isScheduling = getBuildingEventQueue(buildingFieldId).length > 0;
+
+  return (
+    <>
+      <Button
+        data-testid="building-actions-construct-building-button"
+        variant="default"
+        size="fit"
+        onClick={onBuildingConstruction}
+        disabled={errorBag.length > 0}
+      >
+        {t(isScheduling ? 'Schedule' : 'Construct')}
+      </Button>
+      <ErrorBag errorBag={errorBag} />
+    </>
+  );
+};
+
+type BuildingCardActionsUpgradeProps = {
+  onBuildingUpgrade: () => void;
+  buildingLevel: number;
+};
+
+const BuildingCardActionsUpgrade = ({
+  onBuildingUpgrade,
+  buildingLevel,
+}: BuildingCardActionsUpgradeProps) => {
+  const { t } = useTranslation();
+  const { buildingId } = use(BuildingCardContext);
+  const { actualLevel, buildingFieldId } = use(BuildingFieldContext);
+  const { getBuildingEventQueue } = use(CurrentVillageBuildingQueueContext);
+
+  const { errorBag } = useBuildingConstructionErrorBag(
+    buildingId,
+    actualLevel,
+    buildingFieldId,
+  );
+  const isScheduling = getBuildingEventQueue(buildingFieldId).length > 0;
+
+  return (
+    <>
+      <Button
+        data-testid="building-actions-upgrade-building-button"
+        variant="default"
+        size="fit"
+        onClick={onBuildingUpgrade}
+        disabled={errorBag.length > 0}
+      >
+        {isScheduling
+          ? t('Schedule')
+          : t('Upgrade to level {{level}}', { level: buildingLevel + 1 })}
+      </Button>
+      <ErrorBag errorBag={errorBag} />
+    </>
+  );
+};
+
+export const BuildingActions = () => {
+  const {
+    buildingId,
+    building,
+    buildingConstructionReadinessAssessment,
+    shouldAllowUnmetRequirementsForScheduledConstruction,
+  } = use(BuildingCardContext);
+  const navigate = useNavigate();
+  const tribe = useTribe();
+  const {
+    buildingFieldId,
+    virtualLevel,
+    doesBuildingExist,
+    maxLevelByBuildingId,
+    buildingIdsInQueue,
+  } = use(BuildingFieldContext);
+  const { preferences } = usePreferences();
+  const {
+    isOpen: isScheduledConstructionConfirmationOpen,
+    openModal: openScheduledConstructionConfirmationModal,
+    closeModal: closeScheduledConstructionConfirmationModal,
+  } = useDialog();
+  const { constructBuilding, upgradeBuilding } = useBuildingActions(
+    buildingId,
+    buildingFieldId,
+  );
+  const { isMaxLevel } = getBuildingDataForLevel(buildingId, virtualLevel);
+
+  const navigateBack = async () => {
+    await navigate('..', { relative: 'path' });
+  };
+
+  const { canBuild } =
+    buildingConstructionReadinessAssessment ??
+    assessBuildingRequirements({
+      building,
+      tribe,
+      maxLevelByBuildingId,
+      buildingIdsInQueue,
+    });
+  const shouldConfirmUnmetScheduledConstruction =
+    !canBuild && shouldAllowUnmetRequirementsForScheduledConstruction;
+
+  const queueBuildingConstruction = async () => {
+    closeScheduledConstructionConfirmationModal();
+    await navigateBack();
+    startTransition(() => {
+      constructBuilding();
+    });
+  };
+
+  const onBuildingConstruction = async () => {
+    if (shouldConfirmUnmetScheduledConstruction) {
+      openScheduledConstructionConfirmationModal();
+      return;
+    }
+
+    await queueBuildingConstruction();
+  };
+
+  const onBuildingUpgrade = async () => {
+    if (preferences.isAutomaticNavigationAfterBuildingLevelChangeEnabled) {
+      await navigateBack();
+    }
+
+    startTransition(() => {
+      upgradeBuilding();
+    });
+  };
+
+  if (!doesBuildingExist) {
+    if (!canBuild && !shouldAllowUnmetRequirementsForScheduledConstruction) {
+      return null;
+    }
+
+    return (
+      <section className="flex flex-col gap-2">
+        <BuildingCardActionsConstruction
+          buildingId={buildingId}
+          onBuildingConstruction={onBuildingConstruction}
+        />
+        <BuildingScheduledConstructionConfirmationDialog
+          isOpen={isScheduledConstructionConfirmationOpen}
+          onCancel={() => {
+            closeScheduledConstructionConfirmationModal();
+          }}
+          onConfirm={queueBuildingConstruction}
+        />
+      </section>
+    );
+  }
+
+  if (isMaxLevel) {
+    return null;
+  }
+
+  return (
+    <section className="flex flex-col gap-2">
+      <BuildingCardActionsUpgrade
+        buildingLevel={virtualLevel}
+        onBuildingUpgrade={onBuildingUpgrade}
+      />
     </section>
   );
 };

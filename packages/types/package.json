@@ -12,6 +12,57 @@
     "directory": "packages/types"
   },
   "exports": {
+    "./dtos/preferences": {
+      "default": "./src/dtos/preferences.ts"
+    },
+    "./dtos/village": {
+      "default": "./src/dtos/village.ts"
+    },
+    "./dtos/player": {
+      "default": "./src/dtos/player.ts"
+    },
+    "./dtos/map": {
+      "default": "./src/dtos/map.ts"
+    },
+    "./dtos/hero": {
+      "default": "./src/dtos/hero.ts"
+    },
+    "./dtos/map-filters": {
+      "default": "./src/dtos/map-filters.ts"
+    },
+    "./dtos/quest": {
+      "default": "./src/dtos/quest.ts"
+    },
+    "./dtos/farm-list": {
+      "default": "./src/dtos/farm-list.ts"
+    },
+    "./dtos/effect": {
+      "default": "./src/dtos/effect.ts"
+    },
+    "./dtos/event": {
+      "default": "./src/dtos/event.ts"
+    },
+    "./dtos/oasis": {
+      "default": "./src/dtos/oasis.ts"
+    },
+    "./dtos/statistics": {
+      "default": "./src/dtos/statistics.ts"
+    },
+    "./dtos/unit": {
+      "default": "./src/dtos/unit.ts"
+    },
+    "./dtos/loyalty": {
+      "default": "./src/dtos/loyalty.ts"
+    },
+    "./dtos/oasis-search": {
+      "default": "./src/dtos/oasis-search.ts"
+    },
+    "./dtos/troop-movement": {
+      "default": "./src/dtos/troop-movement.ts"
+    },
+    "./dtos/report": {
+      "default": "./src/dtos/report.ts"
+    },
     "./api-events": {
       "default": "./src/api-events.ts"
     },
@@ -38,6 +89,9 @@
     },
     "./models/game-event": {
       "default": "./src/models/game-event.ts"
+    },
+    "./models/gatherers-hut-expeditions": {
+      "default": "./src/models/gatherers-hut-expeditions.ts"
     },
     "./models/hero": {
       "default": "./src/models/hero.ts"
@@ -68,6 +122,9 @@
     },
     "./models/report": {
       "default": "./src/models/report.ts"
+    },
+    "./models/battle": {
+      "default": "./src/models/battle.ts"
     },
     "./models/reputation": {
       "default": "./src/models/reputation.ts"
@@ -107,15 +164,13 @@
     "lint/oxlint": "oxlint --type-aware --fix",
     "format:check": "biome ci --linter-enabled=false",
     "format": "biome check --write --no-errors-on-unmatched",
-    "type-check": "tsgo"
+    "type-check": "tsc"
   },
   "dependencies": {
-    "@sqlite.org/sqlite-wasm": "*",
-    "zod": "*"
+    "@sqlite.org/sqlite-wasm": "3.53.4-build1",
+    "zod": "4.6.5"
   },
   "devDependencies": {
-    "@biomejs/biome": "*",
-    "@typescript/native-preview": "*",
-    "typescript": "*"
+    "typescript": "7.0.2"
   }
 }

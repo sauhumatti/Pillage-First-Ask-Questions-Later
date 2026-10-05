@@ -1,17 +1,57 @@
-import { useEffect, useMemo, useState } from 'react';
+import {
+  type Dispatch,
+  type SetStateAction,
+  useCallback,
+  useMemo,
+  useState,
+} from 'react';
 
 export const usePagination = <T>(
   items: T[],
   resultsPerPage: number,
   defaultPage = 1,
 ) => {
-  const [page, setPage] = useState<number>(defaultPage);
+  const [storedPagination, setStoredPagination] = useState(() => ({
+    defaultPage,
+    page: defaultPage,
+  }));
 
   const pageCount = useMemo(() => {
     return Math.max(1, Math.ceil(items.length / resultsPerPage));
   }, [items.length, resultsPerPage]);
 
-  const actualPage = page > pageCount ? pageCount : page;
+  const clampPage = useCallback(
+    (nextPage: number) => {
+      return Math.min(pageCount, Math.max(1, nextPage));
+    },
+    [pageCount],
+  );
+
+  const setPage: Dispatch<SetStateAction<number>> = useCallback(
+    (nextPage) => {
+      setStoredPagination((previousPagination) => {
+        const previousPage =
+          previousPagination.defaultPage === defaultPage
+            ? previousPagination.page
+            : defaultPage;
+        const currentPage = clampPage(previousPage);
+        const resolvedPage =
+          typeof nextPage === 'function' ? nextPage(currentPage) : nextPage;
+
+        return {
+          defaultPage,
+          page: clampPage(resolvedPage),
+        };
+      });
+    },
+    [clampPage, defaultPage],
+  );
+
+  const page =
+    storedPagination.defaultPage === defaultPage
+      ? storedPagination.page
+      : defaultPage;
+  const actualPage = clampPage(page);
 
   const isPaginationPreviousEnabled = pageCount >= 2 && actualPage !== 1;
   const isPaginationNextEnabled = pageCount >= 2 && actualPage < pageCount;
@@ -48,12 +88,6 @@ export const usePagination = <T>(
     return elements;
   }, [actualPage, pageCount]);
 
-  useEffect(() => {
-    if (page > pageCount) {
-      setPage(pageCount);
-    }
-  }, [pageCount, page]);
-
   return useMemo(
     () => ({
       page: actualPage,
@@ -67,6 +101,7 @@ export const usePagination = <T>(
     }),
     [
       actualPage,
+      setPage,
       pageCount,
       resultsPerPage,
       paginationElements,

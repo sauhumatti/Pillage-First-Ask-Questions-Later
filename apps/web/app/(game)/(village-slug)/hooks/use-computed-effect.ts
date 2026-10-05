@@ -8,6 +8,8 @@ import {
 import { useCurrentVillage } from 'app/(game)/(village-slug)/hooks/current-village/use-current-village';
 import { useEffects } from 'app/(game)/(village-slug)/hooks/use-effects';
 
+const computedEffectCacheKey = 'computed-effect';
+
 export function useComputedEffect(
   effectId: Exclude<
     EffectId,
@@ -30,18 +32,19 @@ export function useComputedEffect(
   const { currentVillage } = useCurrentVillage();
 
   const fetcher = () => {
-    return calculateComputedEffect(effectId, effects, currentVillage.id);
+    return calculateComputedEffect(effectId, effects, currentVillage.tileId);
   };
 
   const { data: computedEffect } = useQuery({
-    queryKey: [effectId, currentVillage.id, effects],
+    queryKey: [
+      computedEffectCacheKey,
+      effectId,
+      currentVillage.tileId,
+      effects,
+    ],
     queryFn: fetcher,
     initialData: fetcher,
-    initialDataUpdatedAt: Date.now(),
-    queryKeyHashFn: () => {
-      const effectHash = effects.map((effect) => effect.value).join('|');
-      return `effect-id-[${effectId}]-village-id-[${currentVillage.id}]-updated-at-[${currentVillage.lastUpdatedAt}]-${effectHash}`;
-    },
+    staleTime: Number.POSITIVE_INFINITY,
   });
 
   return computedEffect;

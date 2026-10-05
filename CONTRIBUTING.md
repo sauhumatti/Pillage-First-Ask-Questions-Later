@@ -10,36 +10,33 @@ question to the [Discord server](https://discord.gg/Ep7NKVXUZA).
 
 ### License Agreement
 
-This project is licensed under the GNU Affero General Public License v3.0.
-By contributing to this repository, you agree that your contributions will be licensed under the terms of the project
-license.
+This project is licensed under the GNU Affero General Public License v3.0. By contributing to this repository, you agree
+that your contributions will be licensed under the terms of the project license.
 
 See the [LICENSE.md](/LICENSE.md) or https://gnu.org/licenses/agpl-3.0 for details.
 
 ## 1. Installation
 
 **Pillage First, Ask Questions Later** requires [Node.js version 24.12.0 (LTS)](https://nodejs.org/en/download) or
-later.
+newer.
 
 1. Fork the project
 2. Clone the forked project
 3. Run `npm install` at the root of the repository
 4. Run `npm run inject-graphics` at the root of the repository
-5. (Optional) If you cloned the repository before we migrated to a monorepo, you will have some orphaned directories
-   sticking around. Run `npm run remove-deprecated-directories` command to remove these unneeded files.
-6. (Optional) Run `npm run extract-sql-schema`, which generates a `schema.sql` file inside
-   `node_modules/@pillage-first/dev` with all table
-   definitions and indexes. Useful for giving context to AI when building queries.
+5. (Optional) Run `npm run extract-sql-schema`, which generates `schema.sql` and `db.sqlite3` files inside
+   `apps/erd/sql-schema` with all table definitions and indexes. Useful for giving context to AI when building queries.
 
 ## 2. Repository
 
-This repository is set up as a monorepo with [Turborepo](https://turborepo.com).
-It currently consists of the following apps & packages:
+This repository is set up as a monorepo with [Turborepo](https://turborepo.com). It currently consists of the following
+apps & packages:
 
 - **apps**
 -
   - [web](/apps/web/README.md) (frontend client)
   - [swagger-ui](/apps/swagger-ui/README.md) (open api client)
+  - [erd](/apps/erd/README.md) (ERD)
 
 - **packages**
 -
@@ -56,25 +53,22 @@ It currently consists of the following apps & packages:
   - [utils](/packages/utils/README.md) (shared helper functions)
 
 The project follows a **colocation** principle, meaning files related to a feature (components, tests, hooks,... and
-utilities) are kept
-close to each other within the same directory. This approach improves maintainability and makes it easier to find and
-modify related code.
+utilities) are kept close to each other within the same directory. This approach improves maintainability and makes it
+easier to find and modify related code.
 
 ### 2.1 Useful scripts
 
-- `npm run inject-graphics` - app graphics are stored in `@pillage-first/graphics` npm package. This commands takes the
+- `npm run inject-graphics` - app graphics are stored in `@pillage-first/graphics` npm package. This command takes the
   graphic contents of `@pillage-first/graphics` and injects it to `apps/web/public`. This is required for graphics to be
   displayed correctly.
-- `npm run remove-deprecated-directories` - if you cloned the repository before we migrated to a monorepo, you will have
-  some orphaned directories sticking around. Run this command to remove these unneeded files.
-- `npm run extract-sql-schema` - generates a `schema.sql` file inside `node_modules/@pillage-first/dev` with all table
+- `npm run extract-sql-schema` - generates `schema.sql` and `db.sqlite3` inside `apps/erd/sql-schema` with all table
   definitions and indexes. Useful for giving context to AI when building queries.
 - `npm run extract-sql-usage` - generates a `.sql` file inside `node_modules/@pillage-first/dev` with every SQL
-  statement
-  the app currently uses. Useful for debugging performance & checking indexing.
+  statement the app currently uses. Useful for debugging performance & checking indexing.
 - `npm run extract-sql-seeder-usage` - generates a `.sql` file inside `node_modules/@pillage-first/dev` with every SQL
-  statement
-  the app currently uses to seed the game world. Useful for debugging seeding performance.
+  statement the app currently uses to seed the game world. Useful for debugging seeding performance.
+- `turbo run swagger` - opens Swagger UI documentation on `http://localhost:5174`.
+- `turbo run erd` - opens SQLite ERD on `http://localhost:5175`.
 
 ## 3. Technology Stack
 
@@ -88,8 +82,7 @@ modify related code.
 - **Localization:**
   [i18next](https://www.i18next.com) + [react-i18next](https://react.i18next.com) + [i18next-cli](https://github.com/i18next/i18next-cli)
 - **Unit testing:** [Vitest](https://vitest.dev)
-- **Deployment:**
-  Netlify ([Master Deploy](https://pillagefirst.netlify.app) | [Dev Deploy](https://develop--pillagefirst.netlify.app))
+- **Deployment:** Netlify ([Master Deploy](https://pillagefirst.com)
 - **Version Control:** GitHub ([Repository](https://github.com/jurerotar/Pillage-First-Ask-Questions-Later))
 
 ## 4. Contributing
@@ -97,13 +90,15 @@ modify related code.
 Before starting, please read through the [architecture documentation](./docs/ARCHITECTURE.md) to gain an understanding
 on how the app works.
 
+Due to an increase in drive-by, AI-generated pull requests, please discuss and agree on your proposed contribution
+before opening a pull request by either opening an issue or discussing your proposed changes in the Discord server. Pull
+requests that were not agreed upon in advance will be automatically closed.
+
 Run `turbo run dev` at the root of the repository to start a development server, and the app will be available on
-`http://localhost:5173`. A link to it will also be
-posted to your terminal.
+`http://localhost:5173`. A link to it will also be posted to your terminal.
 
-Implement your changes, then create a pull request against the upstream repository's `develop` branch.
-
-Pull requests cannot be merged until all required checks are passing.
+Begin your work from the `master` branch. Implement your changes, then create a pull request against the upstream
+repository's `master` branch. Pull requests cannot be merged until all required checks are passing.
 
 ## 5. Git Hooks
 
@@ -113,12 +108,12 @@ We use git hooks to enforce consistent code standards and checks. Currently, 3 h
 the [default configuration](https://github.com/conventional-changelog/commitlint/tree/master/%40commitlint/config-conventional),
 without the body length check.
 
-`pre-commit`: Lint, format and localization-extraction script are run.
+`pre-commit`: Format and localization-extraction script are run.
 
 `pre-push`: Lint and format is validated before push.
 
-These hooks are managed automatically via `lefthook`. You can find the configuration in [
-`lefthook.yml`](./lefthook.yml).
+These hooks are managed via `lefthook`. After installing dependencies, run `npx lefthook install` from the repository
+root to install them. You can find the configuration in [`lefthook.yml`](./lefthook.yml).
 
 ## 6. Localization
 
@@ -137,10 +132,9 @@ You may run these checks locally.
 - format - `turbo run format` or `turbo run format:check`
 - typecheck - `turbo run type-check`
 - test - `turbo run test`
-- i18n check - `npx --workspace="web" i18next-cli extract --ci`
+- i18n check - `npx --workspace="@pillage-first/web" i18next-cli extract --ci`
 
 ## 8. Deployment & CI/CD
 
-The project is hosted on **Netlify**, with separate environments for `master` and `develop` branches and additional
+The project is hosted on **Netlify**, with environments for `master` branch and additional
 builds per branch and PRs. Posting a pull-request will automatically create a new live deployment.
-

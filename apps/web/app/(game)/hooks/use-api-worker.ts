@@ -1,54 +1,23 @@
 import { useSuspenseQuery } from '@tanstack/react-query';
-import { OutdatedDatabaseSchemaError } from '@pillage-first/api/errors';
-import ApiWorker from '@pillage-first/api?worker&url';
 import type { Server } from '@pillage-first/types/models/server';
-import { isNotificationMessageEvent } from 'app/(game)/providers/guards/api-notification-event-guards';
-
-const createWorkerWithReadySignal = (serverSlug: string): Promise<Worker> => {
-  return new Promise((resolve, reject) => {
-    const url = new URL(ApiWorker, import.meta.url);
-    url.searchParams.set('server-slug', serverSlug);
-    const worker = new Worker(url.toString(), { type: 'module' });
-
-    const handleWorkerInitializationMessage = (event: MessageEvent) => {
-      if (!isNotificationMessageEvent(event)) {
-        return;
-      }
-
-      if (event.data.eventKey === 'event:database-initialization-success') {
-        worker.removeEventListener(
-          'message',
-          handleWorkerInitializationMessage,
-        );
-        resolve(worker);
-      }
-
-      if (event.data.eventKey === 'event:database-initialization-error') {
-        worker.removeEventListener(
-          'message',
-          handleWorkerInitializationMessage,
-        );
-        reject(new OutdatedDatabaseSchemaError());
-      }
-    };
-
-    worker.addEventListener('message', handleWorkerInitializationMessage);
-
-    worker.postMessage({
-      type: 'WORKER_INIT',
-    });
-  });
-};
+import { getApiWorkerHandle } from 'app/(game)/providers/utils/api-worker-manager';
+import { wait } from 'app/utils/device';
 
 export const useApiWorker = (serverSlug: Server['slug']) => {
-  const { data: apiWorker } = useSuspenseQuery({
+  const { data: apiWorkerHandle } = useSuspenseQuery({
     queryKey: ['api-worker', serverSlug],
-    queryFn: () => createWorkerWithReadySignal(serverSlug),
+    queryFn: async () => {
+      const [apiWorkerHandle] = await Promise.all([
+        getApiWorkerHandle(serverSlug),
+        // Minimal splash duration
+        wait(1_200),
+      ]);
+
+      return apiWorkerHandle;
+    },
     staleTime: Number.POSITIVE_INFINITY,
     gcTime: Number.POSITIVE_INFINITY,
   });
 
-  return {
-    apiWorker,
-  };
+  return apiWorkerHandle;
 };

@@ -5,8 +5,16 @@ export const GRAPHICS_TIME_OF_DAY_COOKIE_NAME = 'pillage-first-time-of-day';
 
 export const COOKIE_UPDATE_EVENT_NAME = 'pillage-first-cookies-update-event';
 
+export type DeviceType = 'desktop' | 'mobile';
+
+export const DESKTOP_MEDIA_QUERY = '(min-width: 1024px)';
+
 export const isStandaloneDisplayMode = () => {
   return window.matchMedia('(display-mode: standalone)').matches;
+};
+
+export const getDeviceType = (): DeviceType => {
+  return window.matchMedia(DESKTOP_MEDIA_QUERY).matches ? 'desktop' : 'mobile';
 };
 
 type CookieName =
@@ -29,6 +37,9 @@ export const setCookie = async <T extends string>(
       expires: expires.getTime(),
       path: '/',
     });
+
+    const event = new Event(COOKIE_UPDATE_EVENT_NAME);
+    document.dispatchEvent(event);
     return;
   }
 
@@ -47,4 +58,26 @@ export const getCookie = async (name: CookieName): Promise<string | null> => {
     .split('; ')
     .find((row) => row.startsWith(name));
   return cookie?.split('=')[1] || null;
+};
+
+export const getDeviceId = (): string => {
+  if (typeof window === 'undefined') {
+    return 'server';
+  }
+
+  const KEY = 'pillage-first:device-id';
+  let deviceId = window.localStorage.getItem(KEY);
+
+  if (!deviceId) {
+    deviceId = window.crypto.randomUUID();
+    window.localStorage.setItem(KEY, deviceId);
+  }
+
+  return deviceId;
+};
+
+export const wait = (duration: number): Promise<void> => {
+  return new Promise((resolve) => {
+    globalThis.setTimeout(resolve, duration);
+  });
 };

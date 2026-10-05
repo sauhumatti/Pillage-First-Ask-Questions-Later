@@ -1,11 +1,12 @@
 import { useTranslation } from 'react-i18next';
 import { getBuildingFieldByBuildingFieldId } from '@pillage-first/game-assets/utils/buildings';
 import type { Route } from '@react-router/types/app/(game)/(village-slug)/(village)/(...building-field-id)/+types/page';
-import { BuildingConstruction } from 'app/(game)/(village-slug)/(village)/(...building-field-id)/components/building-construction';
+import { BuildingConstructionTabs } from 'app/(game)/(village-slug)/(village)/(...building-field-id)/components/building-construction-tabs';
 import { BuildingDetails } from 'app/(game)/(village-slug)/(village)/(...building-field-id)/components/building-details';
 import { buildingFieldIdIsInRangeMiddleware } from 'app/(game)/(village-slug)/(village)/(...building-field-id)/middlewares/building-field-id-in-range-middleware';
 import { BuildingFieldProvider } from 'app/(game)/(village-slug)/(village)/(...building-field-id)/providers/building-field-provider';
 import { useCurrentVillage } from 'app/(game)/(village-slug)/hooks/current-village/use-current-village';
+import { PageContents } from 'app/components/page-contents';
 
 export const clientMiddleware: Route.ClientMiddlewareFunction[] = [
   buildingFieldIdIsInRangeMiddleware,
@@ -31,16 +32,16 @@ const BuildingPage = ({ params }: Route.ComponentProps) => {
   const title = `${buildingFieldId <= 18 ? t('Resources') : t('Village')} - ${buildingFieldId} | Pillage First! - ${serverSlug} - ${villageSlug}`;
 
   return (
-    <>
+    <PageContents>
       <title>{title}</title>
       <BuildingFieldProvider
         buildingFieldId={buildingFieldId}
         buildingField={buildingField}
       >
         {hasBuilding && <BuildingDetails />}
-        {!hasBuilding && <BuildingConstruction />}
+        {!hasBuilding && <BuildingConstructionTabs />}
       </BuildingFieldProvider>
-    </>
+    </PageContents>
   );
 };
 

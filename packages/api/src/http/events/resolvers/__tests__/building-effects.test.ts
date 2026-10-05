@@ -1,0 +1,84 @@
+import { describe, expect, test } from 'vitest';
+import { z } from 'zod';
+import { prepareTestDatabase } from '@pillage-first/db';
+import {
+  createBuildingConstructionEventMock,
+  createBuildingLevelChangeEventMock,
+} from '@pillage-first/mocks/event';
+import type { Building } from '@pillage-first/types/models/building';
+import {
+  buildingConstructionResolver,
+  buildingLevelChangeResolver,
+} from '../building-resolvers';
+
+describe('building effects', () => {
+  const buildingsToTest: { id: Building['id']; effectId: string }[] = [
+    { id: 'BARRACKS', effectId: 'barracksTrainingDuration' },
+    { id: 'GREAT_BARRACKS', effectId: 'greatBarracksTrainingDuration' },
+    { id: 'STABLE', effectId: 'stableTrainingDuration' },
+    { id: 'GREAT_STABLE', effectId: 'greatStableTrainingDuration' },
+    { id: 'WORKSHOP', effectId: 'workshopTrainingDuration' },
+  ];
+
+  for (const { id, effectId } of buildingsToTest) {
+    test(`should update ${effectId} effect when ${id} is upgraded`, async () => {
+      const database = await prepareTestDatabase();
+      const villageId = 1;
+      const buildingFieldId = 20;
+
+      // Construct building at level 0
+      buildingConstructionResolver(
+        database,
+        createBuildingConstructionEventMock({
+          id: Math.floor(Math.random() * 1_000_000),
+          startsAt: 1000,
+          duration: 500,
+          villageId,
+          buildingFieldId,
+          buildingId: id,
+          level: 0,
+          previousLevel: 0,
+        }),
+      );
+
+      // Verify level 0 effect value (should be 1)
+      const effectValue0 = database.selectValue({
+        sql: 'SELECT value FROM effects WHERE tile_id = (SELECT tile_id FROM villages WHERE id = $village_id) AND source_specifier = $field_id AND effect_id = (SELECT id FROM effect_ids WHERE effect = $effectId);',
+        bind: {
+          $village_id: villageId,
+          $field_id: buildingFieldId,
+          $effectId: effectId,
+        },
+        schema: z.number(),
+      });
+      expect(effectValue0).toBe(1);
+
+      // Level up to level 2 (valuesPerLevel[2] = 0.9091)
+      buildingLevelChangeResolver(
+        database,
+        createBuildingLevelChangeEventMock({
+          id: Math.floor(Math.random() * 1_000_000),
+          startsAt: 2000,
+          duration: 500,
+          villageId,
+          buildingFieldId,
+          buildingId: id,
+          level: 2,
+          previousLevel: 1,
+        }),
+      );
+
+      // Verify level 2 effect value
+      const effectValue2 = database.selectValue({
+        sql: 'SELECT value FROM effects WHERE tile_id = (SELECT tile_id FROM villages WHERE id = $village_id) AND source_specifier = $field_id AND effect_id = (SELECT id FROM effect_ids WHERE effect = $effectId);',
+        bind: {
+          $village_id: villageId,
+          $field_id: buildingFieldId,
+          $effectId: effectId,
+        },
+        schema: z.number(),
+      });
+      expect(effectValue2).toBeCloseTo(0.9091, 4);
+    });
+  }
+});

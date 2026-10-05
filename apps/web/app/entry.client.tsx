@@ -1,3 +1,4 @@
+import 'zod/compile';
 import { StrictMode, startTransition } from 'react';
 import { hydrateRoot } from 'react-dom/client';
 import { I18nextProvider } from 'react-i18next';
@@ -7,6 +8,7 @@ import type {
   TimeOfDay,
   UIColorScheme,
 } from '@pillage-first/types/models/preferences';
+import { reportError } from 'app/instrumentation/report-error';
 import type { AvailableLocale } from 'app/localization/i18n';
 import { i18n } from 'app/localization/i18n';
 import { CookieProvider } from 'app/providers/cookie-provider';
@@ -18,6 +20,19 @@ import {
   setCookie,
   UI_COLOR_SCHEME_COOKIE_NAME,
 } from 'app/utils/device';
+
+const createReactRootErrorHandler =
+  (errorPhase: string) =>
+  (error: unknown, { componentStack }: { componentStack?: string }) =>
+    reportError(
+      error instanceof Error ? (error.cause ?? error) : error,
+      'React root render error',
+      {
+        componentStack: componentStack?.trim(),
+        errorPhase,
+        path: location.pathname,
+      },
+    );
 
 const createCookies = async () => {
   const [locale, skinVariant, colorScheme, timeOfDay] = await Promise.all([
@@ -68,5 +83,10 @@ startTransition(() => {
         </I18nextProvider>
       </CookieProvider>
     </StrictMode>,
+    {
+      onCaughtError: createReactRootErrorHandler('caught'),
+      onRecoverableError: createReactRootErrorHandler('recoverable'),
+      onUncaughtError: createReactRootErrorHandler('uncaught'),
+    },
   );
 });

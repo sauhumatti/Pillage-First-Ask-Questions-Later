@@ -22,16 +22,18 @@ import { MdFace, MdOutlineHolidayVillage, MdSettings } from 'react-icons/md';
 import { PiListChecks, PiPathBold } from 'react-icons/pi';
 import { RiAuctionLine } from 'react-icons/ri';
 import { RxExit } from 'react-icons/rx';
-import { TbGrave2, TbMap2, TbShoe } from 'react-icons/tb';
+import { TbDotsVertical, TbGrave2, TbMap2, TbShoe } from 'react-icons/tb';
 import {
   Link,
   NavLink,
   type NavLinkProps,
   Outlet,
   type ShouldRevalidateFunction,
-  useNavigate,
 } from 'react-router';
-import { calculateHeroLevel } from '@pillage-first/game-assets/utils/hero';
+import {
+  calculateHeroAttributePoints,
+  calculateHeroLevel,
+} from '@pillage-first/game-assets/utils/hero';
 import type { Resource } from '@pillage-first/types/models/resource';
 import { formatNumber } from '@pillage-first/utils/format';
 import { parseResourcesFromRFC } from '@pillage-first/utils/map';
@@ -43,29 +45,35 @@ import {
 } from 'app/(game)/(village-slug)/components/developer-tools-console';
 import { PreferencesUpdater } from 'app/(game)/(village-slug)/components/preferences-updater';
 import { ResourceCounter } from 'app/(game)/(village-slug)/components/resource-counter';
+import { Resources } from 'app/(game)/(village-slug)/components/resources';
 import { TroopList } from 'app/(game)/(village-slug)/components/troop-list';
 import { TroopMovements } from 'app/(game)/(village-slug)/components/troop-movements';
 import { useCurrentVillage } from 'app/(game)/(village-slug)/hooks/current-village/use-current-village';
 import { useCenterHorizontally } from 'app/(game)/(village-slug)/hooks/dom/use-center-horizontally';
 import { useMediaQuery } from 'app/(game)/(village-slug)/hooks/dom/use-media-query';
-import { useGameNavigation } from 'app/(game)/(village-slug)/hooks/routes/use-game-navigation';
+import { useVillageSwitchNavigation } from 'app/(game)/(village-slug)/hooks/routes/use-village-switch-navigation';
 import { useCollectableQuestCount } from 'app/(game)/(village-slug)/hooks/use-collectable-quest-count';
 import { useHero } from 'app/(game)/(village-slug)/hooks/use-hero';
 import { useHeroAdventures } from 'app/(game)/(village-slug)/hooks/use-hero-adventures';
 import { usePlayerVillageListing } from 'app/(game)/(village-slug)/hooks/use-player-village-listing';
 import { usePreferences } from 'app/(game)/(village-slug)/hooks/use-preferences';
 import { useReports } from 'app/(game)/(village-slug)/hooks/use-reports';
-import { useVillageTroops } from 'app/(game)/(village-slug)/hooks/use-village-troops';
 import { CurrentVillageBuildingQueueContextProvider } from 'app/(game)/(village-slug)/providers/current-village-building-queue-provider';
-import {
-  CurrentVillageStateContext,
-  CurrentVillageStateProvider,
-} from 'app/(game)/(village-slug)/providers/current-village-state-provider';
+import { CurrentVillageComputedEffectsContext } from 'app/(game)/(village-slug)/providers/current-village-computed-effects-context';
+import { CurrentVillageComputedEffectsProvider } from 'app/(game)/(village-slug)/providers/current-village-computed-effects-provider';
+import { CurrentVillageLiveResourcesProvider } from 'app/(game)/(village-slug)/providers/current-village-live-resources-provider';
+import { GameLayoutContext } from 'app/(game)/(village-slug)/providers/game-layout-context';
+import { GameLayoutProvider } from 'app/(game)/(village-slug)/providers/game-layout-provider';
 import { VillageSlugProvider } from 'app/(game)/(village-slug)/providers/village-slug-provider';
-import { ApiContext } from 'app/(game)/providers/api-provider';
 import { Icon } from 'app/components/icon';
 import { Text } from 'app/components/text';
 import { Tooltip } from 'app/components/tooltip';
+import {
+  Popover,
+  PopoverClose,
+  PopoverContent,
+  PopoverTrigger,
+} from 'app/components/ui/popover';
 import {
   Select,
   SelectContent,
@@ -76,20 +84,6 @@ import {
 import { Separator } from 'app/components/ui/separator';
 import { Spinner } from 'app/components/ui/spinner';
 import { useDialog } from 'app/hooks/use-dialog';
-
-const closeGameWorld = (apiWorker: Worker): void => {
-  const handler = ({ data }: MessageEvent) => {
-    const { type } = data;
-
-    if (type === 'WORKER_CLOSE_SUCCESS') {
-      apiWorker.removeEventListener('message', handler);
-      apiWorker.terminate();
-    }
-  };
-
-  apiWorker.addEventListener('message', handler);
-  apiWorker.postMessage({ type: 'WORKER_CLOSE' });
-};
 
 const TOOLTIP_DELAY_SHOW = 500;
 
@@ -110,7 +104,7 @@ const Counter = ({ counter }: CounterProps) => {
 };
 
 const ReportsCounter = () => {
-  const { reports } = useReports();
+  const { reports } = useReports('unread');
   return <Counter counter={reports.length} />;
 };
 
@@ -124,66 +118,48 @@ const QuestsCounter = () => {
   return <Counter counter={collectableQuestCount} />;
 };
 
-type NavigationSideItemProps = Partial<NavLinkProps> & {
+type NavigationSideItemProps = ComponentProps<'span'> & {
   counter?: ReactNode;
-  onClick?: () => void;
 };
 
 const NavigationSideItem = ({
   children,
+  className,
   counter,
   ...rest
 }: PropsWithChildren<NavigationSideItemProps>) => {
-  const content = (
-    <span className="lg:size-10 lg:bg-background lg:rounded-full flex items-center justify-center">
-      {children}
-    </span>
-  );
-
-  const { to, ...restWithoutTo } = rest;
-
-  const commonProps = {
-    'data-tooltip-id': 'general-tooltip' as const,
-    'data-tooltip-delay-show': TOOLTIP_DELAY_SHOW,
-    'data-tooltip-class-name': 'hidden lg:flex',
-    tabIndex: 0,
-    className: clsx(
-      'bg-linear-to-t from-[#f2f2f2] to-[#ffffff] dark:from-muted/40 dark:to-muted/60',
-      'flex items-center justify-center shadow-md rounded-md px-3 py-2 border border-[#f1f1f1] dark:border-border relative',
-      'transition-transform active:scale-95 active:shadow-inner',
-      'lg:size-12 lg:p-0 lg:rounded-full lg:shadow lg:border-0 lg:from-[#a3a3a3] lg:to-[#c8c8c8]',
-      'lg:transition-colors lg:hover:from-[#9a9a9a] lg:hover:to-[#bfbfbf]',
-      'lg:dark:from-[#404040] lg:dark:to-[#303030] lg:dark:hover:from-[#4a4a4a] lg:dark:hover:to-[#3a3a3a]',
-    ),
-    ...restWithoutTo,
-  };
-
   return (
-    <div className="relative">
+    <span className="relative inline-flex">
       {counter}
-      {to ? (
-        <NavLink
-          {...(commonProps as NavLinkProps)}
-          to={to}
-        >
-          {content}
-        </NavLink>
-      ) : (
-        <button
-          type="button"
-          {...(commonProps as ComponentProps<'button'>)}
-        >
-          {content}
-        </button>
-      )}
-    </div>
+      <span
+        data-tooltip-id="general-tooltip"
+        data-tooltip-delay-show={TOOLTIP_DELAY_SHOW}
+        data-tooltip-class-name="hidden lg:flex"
+        className={clsx(
+          'bg-linear-to-t from-[#f2f2f2] to-[#ffffff] dark:from-muted/40 dark:to-muted/60',
+          'flex items-center justify-center shadow-md rounded-md px-3 py-2 border border-[#f1f1f1] dark:border-border relative',
+          'transition-[background-color,border-color,transform] active:scale-95 active:shadow-inner',
+          'lg:size-12 lg:p-0 lg:rounded-full lg:shadow lg:border-0 lg:from-[#a3a3a3] lg:to-[#c8c8c8]',
+          'lg:hover:from-[#9a9a9a] lg:hover:to-[#bfbfbf]',
+          'lg:dark:from-[#404040] lg:dark:to-[#303030] lg:dark:hover:from-[#4a4a4a] lg:dark:hover:to-[#3a3a3a]',
+          className,
+        )}
+        {...rest}
+      >
+        <span className="lg:size-10 lg:bg-background lg:rounded-full flex items-center justify-center">
+          {children}
+        </span>
+      </span>
+    </span>
   );
 };
 
 const DesktopPopulation = () => {
-  const { computedWheatProductionEffect } = use(CurrentVillageStateContext);
+  const { computedWheatProductionEffect } = use(
+    CurrentVillageComputedEffectsContext,
+  );
 
-  const { population, buildingWheatLimit } = computedWheatProductionEffect;
+  const { population } = computedWheatProductionEffect;
 
   return (
     <div className="flex gap-2">
@@ -194,15 +170,6 @@ const DesktopPopulation = () => {
         />
         <span className="text-foreground text-sm">
           {formatNumber(population)}
-        </span>
-      </div>
-      <div className="flex gap-2 justify-center items-center rounded-sm border border-[#f1f1f1] dark:border-border p-1 my-1">
-        <Icon
-          type="freeCrop"
-          className="min-w-3"
-        />
-        <span className="text-foreground text-sm">
-          {buildingWheatLimit > 99 ? '+99' : buildingWheatLimit}
         </span>
       </div>
     </div>
@@ -222,8 +189,7 @@ const VillageOverviewDesktopItem = () => {
       tabIndex={0}
       className={clsx(
         'flex items-center justify-center shadow-md rounded-md p-1.5 border border-[#f1f1f1] dark:border-border relative',
-        'transition-transform active:scale-95 active:shadow-inner',
-        'lg:transition-colors',
+        'transition-[background-color,border-color,transform] active:scale-95 active:shadow-inner',
       )}
     >
       <span className="lg:bg-background rounded-md flex items-center justify-center">
@@ -235,15 +201,17 @@ const VillageOverviewDesktopItem = () => {
 
 const VillageOverviewMobileItem = () => {
   const { t } = useTranslation();
-  const { computedWheatProductionEffect } = use(CurrentVillageStateContext);
+  const { computedWheatProductionEffect } = use(
+    CurrentVillageComputedEffectsContext,
+  );
 
-  const { population, buildingWheatLimit } = computedWheatProductionEffect;
+  const { population } = computedWheatProductionEffect;
 
   return (
     <Link
       to="overview"
       tabIndex={0}
-      className="flex items-center justify-center shadow-md rounded-full p-2.5 border border-[#f1f1f1] dark:border-border relative bg-linear-to-t from-[#f2f2f2] to-[#ffffff] dark:from-muted/40 dark:to-muted/60 transition-transform active:scale-95"
+      className="flex items-center justify-center shadow-md rounded-full p-2.5 border border-[#f1f1f1] dark:border-border relative bg-linear-to-t from-[#f2f2f2] to-[#ffffff] dark:from-muted/40 dark:to-muted/60 transition-[background-color,border-color,transform] active:scale-95"
       aria-label={t('Village overview')}
     >
       <span className="flex items-center justify-center">
@@ -258,43 +226,31 @@ const VillageOverviewMobileItem = () => {
           {formatNumber(population)}
         </span>
       </span>
-      <span className="inline-flex items-center justify-between bg-background dark:bg-muted px-0.5 absolute bottom-0 left-8 h-4 w-9 rounded-full border border-[#f1f1f1] dark:border-border shadow-md">
-        <Icon
-          type="freeCrop"
-          className="size-2.5"
-        />
-        <span className="text-foreground text-2xs">
-          {buildingWheatLimit > 99 ? '+99' : buildingWheatLimit}
-        </span>
-      </span>
     </Link>
   );
 };
 
 const HeroNavigationItem = () => {
   const { t } = useTranslation();
-  const { hero, isHeroAlive, health, experience } = useHero();
-  const { villageTroops } = useVillageTroops();
-
-  const isHeroHome = useMemo(() => {
-    return villageTroops.some(({ unitId }) => unitId === 'HERO');
-  }, [villageTroops]);
+  const { hero, isHeroAlive, health, experience, isHeroHome } = useHero();
 
   const { level, percentToNextLevel } = calculateHeroLevel(experience);
 
+  let selectedAttributeCount = 0;
+
+  for (const attribute of Object.values(hero?.selectableAttributes ?? {})) {
+    selectedAttributeCount += attribute;
+  }
+
   // Each level gets you 4 selectable attributes to pick. Show icon if user has currently selected less than total possible.
   const isLevelUpAvailable =
-    (level + 1) * 4 >
-    Object.values(hero?.selectableAttributes ?? 0).reduce(
-      (total, curr) => total + curr,
-      0,
-    );
+    calculateHeroAttributePoints(level) > selectedAttributeCount;
 
   return (
     <Link
       to="hero"
       tabIndex={0}
-      className="flex items-center justify-center shadow-md rounded-full p-2.5 border border-[#f1f1f1] dark:border-border relative bg-linear-to-t from-[#f2f2f2] to-[#ffffff] dark:from-muted/40 dark:to-muted/60 transition-transform active:scale-95"
+      className="flex items-center justify-center shadow-md rounded-full p-2.5 border border-[#f1f1f1] dark:border-border relative bg-linear-to-t from-[#f2f2f2] to-[#ffffff] dark:from-muted/40 dark:to-muted/60 transition-[background-color,border-color,transform] active:scale-95"
       aria-label={t('Hero')}
     >
       <span className="lg:size-10 flex items-center justify-center">
@@ -369,8 +325,8 @@ const DesktopTopRowItem = ({
       className="
         px-3 py-0.5 border-2 border-white rounded-sm bg-linear-to-t bg-card
         flex items-center justify-center
-        transition-transform active:scale-95 active:shadow-inner
-        lg:transition-colors lg:hover:bg-gray-50 dark:border-border dark:lg:hover:bg-muted
+        transition-[background-color,border-color,transform] active:scale-95 active:shadow-inner
+        lg:hover:bg-gray-50 dark:border-border dark:lg:hover:bg-muted
       "
       {...rest}
     >
@@ -393,16 +349,17 @@ const NavigationMainItem = ({ children, ...rest }: NavigationMainItemProps) => {
       className={({ isActive }) =>
         clsx(
           isActive
-            ? 'from-[#7da100] to-[#c7e94f] lg:hover:from-[#728f00] lg:hover:to-[#b8dc45] dark:from-[#5d7a00] dark:to-[#8fb020] dark:lg:hover:from-[#4a6100] dark:lg:hover:to-[#738e1a]'
-            : 'from-[#b8b2a9] to-[#f1f0ee] lg:hover:from-[#aba5a0] lg:hover:to-[#e8e7e5] dark:from-[#2a2a2a] dark:to-[#404040] dark:lg:hover:from-[#222222] dark:lg:hover:to-[#333333]',
-          'bg-linear-to-t size-14 lg:size-18 rounded-full flex items-center justify-center shadow-lg lg:shadow-none',
-          'transition-transform transform-gpu active:scale-95',
-          'lg:transition-colors',
+            ? 'before:from-[#7da100] before:to-[#c7e94f] lg:hover:before:from-[#728f00] lg:hover:before:to-[#b8dc45] after:from-[#5d7a00] after:to-[#8fb020] lg:hover:after:from-[#4a6100] lg:hover:after:to-[#738e1a]'
+            : 'before:from-[#b8b2a9] before:to-[#f1f0ee] lg:hover:before:from-[#aba5a0] lg:hover:before:to-[#e8e7e5] after:from-[#2a2a2a] after:to-[#404040] lg:hover:after:from-[#222222] lg:hover:after:to-[#333333]',
+          'relative isolate overflow-hidden size-14 lg:size-18 rounded-full flex items-center justify-center shadow-lg lg:shadow-none',
+          'before:absolute before:inset-0 before:bg-linear-to-t before:transition-opacity before:content-[""]',
+          'after:absolute after:inset-0 after:bg-linear-to-t after:opacity-0 after:transition-opacity after:content-[""]',
+          'dark:before:opacity-0 dark:after:opacity-100 transition-transform transform-gpu active:scale-95',
         )
       }
       {...rest}
     >
-      <span className="size-12 lg:size-15 bg-background rounded-full flex items-center justify-center">
+      <span className="relative z-10 size-12 lg:size-15 bg-background rounded-full flex items-center justify-center">
         {children}
       </span>
     </NavLink>
@@ -413,18 +370,21 @@ const QuestsNavigationItem = () => {
   const { t } = useTranslation();
 
   return (
-    <NavigationSideItem
+    <Link
       to="quests"
       aria-label={t('Quests')}
-      data-tooltip-content={t('Quests')}
-      counter={
-        <Suspense fallback={null}>
-          <QuestsCounter />
-        </Suspense>
-      }
     >
-      <LuBookMarked className="text-2xl" />
-    </NavigationSideItem>
+      <NavigationSideItem
+        data-tooltip-content={t('Quests')}
+        counter={
+          <Suspense fallback={null}>
+            <QuestsCounter />
+          </Suspense>
+        }
+      >
+        <LuBookMarked className="text-2xl" />
+      </NavigationSideItem>
+    </Link>
   );
 };
 
@@ -432,18 +392,21 @@ const AdventuresNavigationItem = () => {
   const { t } = useTranslation();
 
   return (
-    <NavigationSideItem
+    <Link
       to="hero?tab=adventures"
       aria-label={t('Adventures')}
-      data-tooltip-content={t('Adventures')}
-      counter={
-        <Suspense fallback={null}>
-          <AdventurePointsCounter />
-        </Suspense>
-      }
     >
-      <PiPathBold className="text-2xl" />
-    </NavigationSideItem>
+      <NavigationSideItem
+        data-tooltip-content={t('Adventures')}
+        counter={
+          <Suspense fallback={null}>
+            <AdventurePointsCounter />
+          </Suspense>
+        }
+      >
+        <PiPathBold className="text-2xl" />
+      </NavigationSideItem>
+    </Link>
   );
 };
 
@@ -451,18 +414,21 @@ const ReportsNavigationItem = () => {
   const { t } = useTranslation();
 
   return (
-    <NavigationSideItem
+    <Link
       to="reports"
       aria-label={t('Reports')}
-      data-tooltip-content={t('Reports')}
-      counter={
-        <Suspense fallback={null}>
-          <ReportsCounter />
-        </Suspense>
-      }
     >
-      <LuScrollText className="text-2xl" />
-    </NavigationSideItem>
+      <NavigationSideItem
+        data-tooltip-content={t('Reports')}
+        counter={
+          <Suspense fallback={null}>
+            <ReportsCounter />
+          </Suspense>
+        }
+      >
+        <LuScrollText className="text-2xl" />
+      </NavigationSideItem>
+    </Link>
   );
 };
 
@@ -515,34 +481,84 @@ const MapNavigationItem = () => {
 };
 
 const ResourceCounters = () => {
-  return (
+  const { t } = useTranslation();
+  const isWiderThanLg = useMediaQuery('(min-width: 1024px)');
+  const { areMobileDetailsVisible, setAreMobileDetailsVisible } =
+    use(GameLayoutContext);
+  const showDetails = isWiderThanLg || areMobileDetailsVisible;
+
+  const counters = (
     <div className="flex w-full lg:border-none py-0.5 mx-auto gap-1 lg:gap-2">
       {(['wood', 'clay', 'iron', 'wheat'] satisfies Resource[]).map(
         (resource: Resource, index) => (
           <Fragment key={resource}>
-            <ResourceCounter resource={resource} />
+            <ResourceCounter
+              resource={resource}
+              showDetails={showDetails}
+            />
             {index !== 3 && <span className="w-0.5 h-full bg-border" />}
           </Fragment>
         ),
       )}
     </div>
   );
+
+  if (isWiderThanLg) {
+    return counters;
+  }
+
+  return (
+    <button
+      type="button"
+      aria-label={t('Resources')}
+      aria-expanded={areMobileDetailsVisible}
+      className="flex w-full rounded-sm text-left"
+      onClick={() => {
+        setAreMobileDetailsVisible((value) => !value);
+      }}
+    >
+      {counters}
+    </button>
+  );
 };
 
 const VillageSelect = () => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
-  const { getNewVillageUrl } = useGameNavigation();
+  const { navigateToVillage } = useVillageSwitchNavigation();
   const { playerVillages } = usePlayerVillageListing();
+  const { preferences } = usePreferences();
   const { currentVillage } = useCurrentVillage();
+  const { x: currentVillageX, y: currentVillageY } = currentVillage.coordinates;
+  const currentVillageLabel = `${currentVillage.name} (${currentVillageX}|${currentVillageY})`;
 
-  const resourceFieldComposition = parseResourcesFromRFC(
-    currentVillage.resourceFieldComposition,
-  ).join('-');
+  const sortedPlayerVillages = useMemo(() => {
+    const byName = (
+      a: (typeof playerVillages)[number],
+      b: (typeof playerVillages)[number],
+    ) =>
+      a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }) ||
+      a.id - b.id;
+    const byPopulation =
+      (direction: 1 | -1) =>
+      (
+        a: (typeof playerVillages)[number],
+        b: (typeof playerVillages)[number],
+      ) =>
+        direction * (a.population - b.population) || byName(a, b);
+    const comparator = {
+      alphabetic: byName,
+      populationAsc: byPopulation(1),
+      populationDesc: byPopulation(-1),
+    }[preferences.villageSort];
+
+    return [...playerVillages].sort(comparator);
+  }, [playerVillages, preferences.villageSort]);
 
   return (
     <Select
-      onValueChange={(value) => navigate(getNewVillageUrl(value))}
+      onValueChange={(value) => {
+        void navigateToVillage(value);
+      }}
       value={currentVillage.slug}
     >
       <SelectTrigger
@@ -550,23 +566,40 @@ const VillageSelect = () => {
         aria-label={t('Village select')}
         className="flex flex-1"
       >
-        <SelectValue />
+        <SelectValue>{currentVillageLabel}</SelectValue>
       </SelectTrigger>
       <SelectContent>
-        {playerVillages.map(({ slug, name, id, coordinates }) => {
-          const { x, y } = coordinates;
-          const formattedId = `${x}|${y}`;
-          return (
-            <SelectItem
-              key={id}
-              value={slug}
-            >
-              <Text className="text-xs sm:text-sm">
-                {name} ({formattedId}) | {resourceFieldComposition}
-              </Text>
-            </SelectItem>
-          );
-        })}
+        {sortedPlayerVillages.map(
+          ({ slug, name, id, coordinates, resourceFieldComposition }) => {
+            const { x, y } = coordinates;
+            const formattedId = `${x}|${y}`;
+            const resources = parseResourcesFromRFC(resourceFieldComposition);
+            const textValue = `${name} (${formattedId}) | ${resources.join('-')}`;
+
+            return (
+              <SelectItem
+                key={id}
+                textValue={textValue}
+                value={slug}
+              >
+                <Text
+                  as="span"
+                  className="flex min-w-0 flex-col gap-0.5 text-xs sm:text-sm"
+                >
+                  <span className="truncate font-medium">
+                    {name} ({formattedId})
+                  </span>
+                  <span className="inline-flex gap-2 text-muted-foreground">
+                    <Resources
+                      iconClassName="size-3.5"
+                      resources={resources}
+                    />
+                  </span>
+                </Text>
+              </SelectItem>
+            );
+          },
+        )}
       </SelectContent>
     </Select>
   );
@@ -578,12 +611,11 @@ type TopNavigationProps = {
 
 const TopNavigation = ({ onDeveloperToolsToggle }: TopNavigationProps) => {
   const { t } = useTranslation();
-  const { apiWorker } = use(ApiContext);
   const isWiderThanLg = useMediaQuery('(min-width: 1024px)');
   const { preferences } = usePreferences();
 
   return (
-    <header className="flex flex-col w-full p-2 pt-0 lg:p-0 relative bg-linear-to-r from-gray-200 via-white to-gray-200 dark:from-muted/60 dark:via-card dark:to-muted/60">
+    <header className="flex flex-col w-full px-safe-or-2 pb-1 lg:px-safe lg:py-0 relative bg-linear-to-r from-gray-200 via-white to-gray-200 dark:from-muted/60 dark:via-card dark:to-muted/60">
       {isWiderThanLg && (
         <div className="flex-col hidden lg:flex shadow-sm bg-card">
           <div className="hidden lg:flex w-full bg-muted py-1 px-2">
@@ -655,12 +687,7 @@ const TopNavigation = ({ onDeveloperToolsToggle }: TopNavigationProps) => {
                   </Link>
                 </li>
                 <li>
-                  <Link
-                    to="/game-worlds"
-                    onClick={() => {
-                      closeGameWorld(apiWorker);
-                    }}
-                  >
+                  <Link to="/game-worlds">
                     <DesktopTopRowItem
                       aria-label={t('Logout')}
                       data-tooltip-content={t('Logout')}
@@ -704,13 +731,14 @@ const TopNavigation = ({ onDeveloperToolsToggle }: TopNavigationProps) => {
                   <AdventuresNavigationItem />
                 </li>
                 <li>
-                  <NavigationSideItem
+                  <Link
                     to="hero?tab=auctions"
                     aria-label={t('Auctions')}
-                    data-tooltip-content={t('Auctions')}
                   >
-                    <RiAuctionLine className="text-xl" />
-                  </NavigationSideItem>
+                    <NavigationSideItem data-tooltip-content={t('Auctions')}>
+                      <RiAuctionLine className="text-xl" />
+                    </NavigationSideItem>
+                  </Link>
                 </li>
               </ul>
             </nav>
@@ -721,13 +749,13 @@ const TopNavigation = ({ onDeveloperToolsToggle }: TopNavigationProps) => {
         </div>
       )}
       {!isWiderThanLg && (
-        <div className="flex justify-between items-center text-center lg:hidden h-14 w-full gap-8">
+        <div className="flex justify-between items-center text-center lg:hidden h-14 w-full max-w-xl mx-auto gap-8">
           <VillageOverviewMobileItem />
           <VillageSelect />
           <HeroNavigationItem />
         </div>
       )}
-      <div className="flex relative rounded-md px-2 lg:absolute top-full lg:-bottom-16 left-1/2 -translate-x-1/2 bg-card max-w-xl w-full lg:z-5 shadow-lg">
+      <div className="flex relative rounded-b-md px-2 lg:absolute top-full lg:-bottom-16 left-1/2 -translate-x-1/2 bg-card max-w-xl w-full lg:z-5 shadow-lg dark:shadow-none">
         <ResourceCounters />
       </div>
     </header>
@@ -738,11 +766,89 @@ type MobileBottomNavigationProps = {
   onDeveloperToolsToggle: () => void;
 };
 
+const MobileMoreNavigation = () => {
+  const { t } = useTranslation();
+  const itemClassName =
+    'flex w-full items-center gap-3 rounded-sm px-3 py-2 text-sm font-medium hover:bg-muted focus-visible:bg-muted focus-visible:outline-none transition-colors';
+
+  return (
+    <Popover>
+      <PopoverTrigger
+        aria-label={t('More')}
+        title={t('More')}
+      >
+        <NavigationSideItem>
+          <TbDotsVertical className="text-2xl" />
+        </NavigationSideItem>
+      </PopoverTrigger>
+      <PopoverContent
+        align="end"
+        side="top"
+        sideOffset={8}
+        className="w-52 p-1"
+      >
+        <nav aria-label={t('More')}>
+          <PopoverClose asChild>
+            <Link
+              to="statistics"
+              className={itemClassName}
+            >
+              <GoGraph className="text-xl" />
+              <span>{t('Statistics')}</span>
+            </Link>
+          </PopoverClose>
+          <PopoverClose asChild>
+            <Link
+              to="preferences"
+              className={itemClassName}
+            >
+              <MdSettings className="text-xl" />
+              <span>{t('Preferences')}</span>
+            </Link>
+          </PopoverClose>
+          <PopoverClose asChild>
+            <Link
+              to="/game-worlds"
+              className={itemClassName}
+            >
+              <RxExit className="text-xl text-red-500" />
+              <span>{t('Logout')}</span>
+            </Link>
+          </PopoverClose>
+          <Separator
+            orientation="horizontal"
+            className=""
+          />
+          {/*<PopoverClose asChild>*/}
+          {/*  <Link*/}
+          {/*    target="_blank"*/}
+          {/*    to="https://discord.com/invite/Ep7NKVXUZA"*/}
+          {/*    className={itemClassName}*/}
+          {/*  >*/}
+          {/*    <FaDiscord className="text-xl text-[#7289da]" />*/}
+          {/*    <span>Discord</span>*/}
+          {/*  </Link>*/}
+          {/*</PopoverClose>*/}
+          <PopoverClose asChild>
+            <Link
+              target="_blank"
+              to="https://github.com/jurerotar/Pillage-First-Ask-Questions-Later"
+              className={itemClassName}
+            >
+              <FaGithub className="text-xl text-[#24292e] dark:text-white" />
+              <span>GitHub</span>
+            </Link>
+          </PopoverClose>
+        </nav>
+      </PopoverContent>
+    </Popover>
+  );
+};
+
 const MobileBottomNavigation = ({
   onDeveloperToolsToggle,
 }: MobileBottomNavigationProps) => {
   const { t } = useTranslation();
-  const { apiWorker } = use(ApiContext);
   const { preferences } = usePreferences();
 
   const container = useRef<HTMLDivElement>(null);
@@ -755,31 +861,23 @@ const MobileBottomNavigation = ({
   // we just have a transparent container and some very hacky gradient to make it look like it works.
   // There's also massive Tailwind brain rot on display here. :S
   return (
-    <header className="lg:hidden fixed bottom-0 left-0 pb-safe-or-8 w-full bg-[linear-gradient(0deg,rgba(255,255,255,1)_0%,rgba(232,232,232,1)_83%,rgba(255,255,255,1)_83.1%,rgba(255,255,255,1)_84%,rgba(255,255,255,0)_84.1%,rgba(255,255,255,0)_100%)] dark:bg-[linear-gradient(0deg,var(--background)_0%,var(--card)_83%,var(--background)_83.1%,var(--background)_84%,transparent_84.1%,transparent_100%)]">
+    <header className="isolate lg:hidden fixed bottom-0 left-0 z-20 w-full px-safe pb-safe-or-8 [contain:paint] transition-[bottom] before:pointer-events-none before:absolute before:inset-0 before:bg-[linear-gradient(0deg,rgba(255,255,255,1)_0%,rgba(232,232,232,1)_83%,rgba(255,255,255,1)_83.1%,rgba(255,255,255,1)_84%,rgba(255,255,255,0)_84.1%,rgba(255,255,255,0)_100%)] before:transition-opacity after:pointer-events-none after:absolute after:inset-0 after:bg-[linear-gradient(0deg,var(--background)_0%,var(--card)_83%,var(--background)_83.1%,var(--background)_84%,transparent_84.1%,transparent_100%)] after:opacity-0 after:transition-opacity dark:before:opacity-0 dark:after:opacity-100">
       <nav
         ref={container}
-        className="flex flex-col w-full overflow-x-scroll scrollbar-hidden"
+        className="relative z-10 flex flex-col w-full overflow-x-scroll scrollbar-hidden"
       >
         <ul className="flex w-fit gap-2 justify-between items-center px-2 pt-5 pb-2 mx-auto">
           <li>
-            <NavigationSideItem
-              target="_blank"
-              to="https://github.com/jurerotar/Pillage-First-Ask-Questions-Later"
-              aria-label="GitHub"
-              title="GitHub"
-            >
-              <FaGithub className="text-2xl text-[#24292e] dark:text-white" />
-            </NavigationSideItem>
-          </li>
-          <li>
-            <NavigationSideItem
+            <Link
               target="_blank"
               to="https://discord.com/invite/Ep7NKVXUZA"
               aria-label="Discord"
               title="Discord"
             >
-              <FaDiscord className="text-2xl text-[#7289da]" />
-            </NavigationSideItem>
+              <NavigationSideItem>
+                <FaDiscord className="text-2xl text-[#7289da]" />
+              </NavigationSideItem>
+            </Link>
           </li>
           <li>
             <Separator orientation="vertical" />
@@ -809,48 +907,21 @@ const MobileBottomNavigation = ({
           <li>
             <ReportsNavigationItem />
           </li>
-          <li>
-            <NavigationSideItem
-              to="statistics"
-              aria-label={t('Statistics')}
-              title={t('Statistics')}
-            >
-              <GoGraph className="text-2xl" />
-            </NavigationSideItem>
-          </li>
-          <li>
-            <NavigationSideItem
-              to="preferences"
-              aria-label={t('Preferences')}
-              title={t('Preferences')}
-            >
-              <MdSettings className="text-2xl" />
-            </NavigationSideItem>
-          </li>
-          <li>
-            <Separator orientation="vertical" />
-          </li>
           {preferences.isDeveloperToolsConsoleEnabled && (
             <li>
-              <NavigationSideItem
+              <button
+                type="button"
                 aria-label={t('Developer tools')}
                 onClick={onDeveloperToolsToggle}
               >
-                <DeveloperToolsButton className="text-purple-600 border-purple-500 size-6" />
-              </NavigationSideItem>
+                <NavigationSideItem>
+                  <DeveloperToolsButton className="text-purple-600 border-purple-500 size-6" />
+                </NavigationSideItem>
+              </button>
             </li>
           )}
           <li>
-            <NavigationSideItem
-              to="/game-worlds"
-              onClick={() => {
-                closeGameWorld(apiWorker);
-              }}
-              aria-label={t('Logout')}
-              title={t('Logout')}
-            >
-              <RxExit className="text-2xl text-red-500" />
-            </NavigationSideItem>
+            <MobileMoreNavigation />
           </li>
         </ul>
       </nav>
@@ -889,27 +960,36 @@ const GameLayout = memo<Route.ComponentProps>(
 
     return (
       <div className="[-webkit-touch-callout:none]">
-        <VillageSlugProvider villageSlug={villageSlug}>
-          <CurrentVillageStateProvider>
-            <CurrentVillageBuildingQueueContextProvider>
-              <Tooltip id="general-tooltip" />
-              <TopNavigation onDeveloperToolsToggle={toggleModal} />
-              <TroopMovements />
-              <Suspense fallback={<PageFallback />}>
-                <Outlet />
-              </Suspense>
-              <ConstructionQueue />
-              <TroopList />
-              {!isWiderThanLg && (
-                <MobileBottomNavigation onDeveloperToolsToggle={toggleModal} />
-              )}
-              <PreferencesUpdater />
-              <DeveloperToolsConsole
-                isOpen={isOpen}
-                onOpenChange={toggleModal}
-              />
-            </CurrentVillageBuildingQueueContextProvider>
-          </CurrentVillageStateProvider>
+        <VillageSlugProvider villageSlug={villageSlug!}>
+          <CurrentVillageComputedEffectsProvider>
+            <CurrentVillageLiveResourcesProvider>
+              <CurrentVillageBuildingQueueContextProvider>
+                <GameLayoutProvider>
+                  <Tooltip
+                    id="general-tooltip"
+                    className="text-xs!"
+                  />
+                  <TopNavigation onDeveloperToolsToggle={toggleModal} />
+                  <TroopMovements />
+                  <Suspense fallback={<PageFallback />}>
+                    <Outlet />
+                  </Suspense>
+                  <ConstructionQueue />
+                  <TroopList />
+                  {!isWiderThanLg && (
+                    <MobileBottomNavigation
+                      onDeveloperToolsToggle={toggleModal}
+                    />
+                  )}
+                  <PreferencesUpdater />
+                  <DeveloperToolsConsole
+                    isOpen={isOpen}
+                    onOpenChange={toggleModal}
+                  />
+                </GameLayoutProvider>
+              </CurrentVillageBuildingQueueContextProvider>
+            </CurrentVillageLiveResourcesProvider>
+          </CurrentVillageComputedEffectsProvider>
         </VillageSlugProvider>
       </div>
     );

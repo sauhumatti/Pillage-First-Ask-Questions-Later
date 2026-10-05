@@ -1,6 +1,5 @@
 import { z } from 'zod';
-import type { Building } from './building';
-import type { Village } from './village';
+import type { Tile } from './tile';
 
 export const effectIdSchema = z
   .enum([
@@ -57,7 +56,7 @@ export type ResourceProductionEffectId = Extract<
 >;
 
 export const effectScopeSchema = z
-  .enum(['global', 'village', 'server'])
+  .enum(['global', 'local', 'server'])
   .meta({ id: 'EffectScope' });
 export const effectSourceSchema = z
   .enum(['hero', 'oasis', 'artifact', 'building', 'tribe', 'server', 'troops'])
@@ -75,7 +74,7 @@ export const effectSchema = z
     type: effectTypeSchema,
     scope: effectScopeSchema,
     source: effectSourceSchema,
-    villageId: z.number().nullable().optional(),
+    tileId: z.number().nullable().optional(),
     sourceSpecifier: z.number().nullable(),
   })
   .meta({ id: 'Effect' });
@@ -96,9 +95,9 @@ export type TribalEffect = Omit<GlobalEffect, 'source'> & {
 };
 
 export type VillageEffect = Omit<Effect, 'scope' | 'source'> & {
-  scope: 'village';
+  scope: 'local';
   source: 'building' | 'oasis' | 'server' | 'troops' | 'hero';
-  villageId: Village['id'];
+  tileId: Tile['id'];
 };
 
 export type HeroEffect = Omit<VillageEffect, 'source'> & {
@@ -106,8 +105,7 @@ export type HeroEffect = Omit<VillageEffect, 'source'> & {
 };
 
 export type VillageBuildingEffect = Omit<VillageEffect, 'source'> & {
-  source: 'building' | 'oasis';
-  buildingId: Building['id'];
+  source: 'building';
 };
 
 export type ArtifactEffect = Omit<VillageEffect, 'source'> & {

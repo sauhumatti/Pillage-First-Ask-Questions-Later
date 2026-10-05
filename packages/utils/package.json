@@ -24,6 +24,9 @@
     "./random": {
       "default": "./src/random.ts"
     },
+    "./loot-table": {
+      "default": "./src/loot-table.ts"
+    },
     "./format": {
       "default": "./src/format.ts"
     },
@@ -36,11 +39,29 @@
     "./env": {
       "default": "./src/env.ts"
     },
+    "./errors": {
+      "default": "./src/errors.ts"
+    },
+    "./fenwick-tree": {
+      "default": "./src/fenwick-tree.ts"
+    },
+    "./opfs-lock-retry": {
+      "default": "./src/opfs-lock-retry.ts"
+    },
+    "./types": {
+      "default": "./src/types.ts"
+    },
     "./game/calculate-computed-effect": {
       "default": "./src/game/calculate-computed-effect.ts"
     },
+    "./game/troop-movement-duration": {
+      "default": "./src/game/troop-movement-duration.ts"
+    },
     "./game/calculate-current-resources": {
       "default": "./src/game/calculate-current-resources.ts"
+    },
+    "./game/building-requirements": {
+      "default": "./src/game/building-requirements.ts"
     },
     "./guards/effect": {
       "default": "./src/guards/effect-guards.ts"
@@ -48,11 +69,17 @@
     "./guards/event": {
       "default": "./src/guards/event-guards.ts"
     },
+    "./guards/building": {
+      "default": "./src/guards/building-guards.ts"
+    },
     "./guards/quest": {
       "default": "./src/guards/quest-guards.ts"
     },
     "./guards/map": {
       "default": "./src/guards/map-guards.ts"
+    },
+    "./guards/report": {
+      "default": "./src/guards/report-guards.ts"
     },
     "./facades/database": {
       "default": "./src/facades/database-facade.ts"
@@ -66,18 +93,16 @@
     "format:check": "biome ci --linter-enabled=false",
     "format": "biome check --write --no-errors-on-unmatched",
     "test": "vitest",
-    "type-check": "tsgo"
+    "type-check": "tsc"
   },
   "dependencies": {
     "@pillage-first/types": "*",
-    "ts-seedrandom": "1.4.1"
+    "ts-seedrandom": "1.6.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "*",
-    "@typescript/native-preview": "*",
-    "vitest": "*",
-    "type-fest": "5.4.4",
-    "typescript": "*",
-    "zod": "*"
+    "typescript": "7.0.2",
+    "vite": "8.3.0",
+    "vitest": "5.0.1",
+    "zod": "4.6.5"
   }
 }

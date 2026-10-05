@@ -21,6 +21,9 @@
     "./items": {
       "default": "./src/items.ts"
     },
+    "./auctions": {
+      "default": "./src/auctions.ts"
+    },
     "./quests": {
       "default": "./src/quests.ts"
     },
@@ -39,6 +42,12 @@
     "./merchants": {
       "default": "./src/merchants.ts"
     },
+    "./loot-tables": {
+      "default": "./src/loot-tables.ts"
+    },
+    "./utils/troops": {
+      "default": "./src/utils/troops.ts"
+    },
     "./utils/quests": {
       "default": "./src/utils/quests.ts"
     },
@@ -51,14 +60,29 @@
     "./utils/items": {
       "default": "./src/utils/items.ts"
     },
+    "./utils/auctions": {
+      "default": "./src/utils/auctions.ts"
+    },
     "./utils/adventures": {
       "default": "./src/utils/adventures.ts"
     },
     "./utils/units": {
       "default": "./src/utils/units.ts"
     },
+    "./utils/hunters-lodge": {
+      "default": "./src/utils/hunters-lodge.ts"
+    },
+    "./utils/trapper": {
+      "default": "./src/utils/trapper.ts"
+    },
+    "./utils/gatherers-hut": {
+      "default": "./src/utils/gatherers-hut.ts"
+    },
     "./factories/unit-research": {
       "default": "./src/factories/unit-research.ts"
+    },
+    "./utils/loyalty": {
+      "default": "./src/utils/loyalty.ts"
     }
   },
   "scripts": {
@@ -69,12 +93,14 @@
     "format:check": "biome ci --linter-enabled=false",
     "format": "biome check --write --no-errors-on-unmatched",
     "test": "vitest",
-    "type-check": "tsgo"
+    "type-check": "tsc"
+  },
+  "dependencies": {
+    "@pillage-first/utils": "*",
+    "ts-seedrandom": "1.6.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "*",
-    "@typescript/native-preview": "*",
-    "typescript": "*",
-    "vitest": "*"
+    "typescript": "7.0.2",
+    "vitest": "5.0.1"
   }
 }

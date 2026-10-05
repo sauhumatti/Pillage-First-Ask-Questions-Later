@@ -1,37 +1,24 @@
 import { MDXProvider } from '@mdx-js/react';
 import { type ComponentProps, use } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Links, Outlet, Scripts, ScrollRestoration } from 'react-router';
-import type { Route } from '@react-router/types/app/(public)/+types/layout.ts';
+import type { Route } from '@react-router/types/app/(public)/+types/layout';
+import { closeAllApiWorkers } from 'app/(game)/providers/utils/api-worker-manager';
 import { DesktopNavigation } from 'app/(public)/components/desktop-navigation';
 import { Footer } from 'app/(public)/components/footer';
 import { MobileNavigation } from 'app/(public)/components/mobile-navigation';
-import { HeadLinks } from 'app/components/head-links.tsx';
+import { HeadLinks } from 'app/components/head-links';
 import { Text } from 'app/components/text';
 import { Tooltip } from 'app/components/tooltip';
 import { Toaster } from 'app/components/ui/toaster';
-import { type AvailableLocale, i18n, locales } from 'app/localization/i18n.ts';
-import { CookieContext, CookieProvider } from 'app/providers/cookie-provider';
-
-export const loader = async ({ params }: Route.LoaderArgs) => {
-  let { locale = 'en-US' } = params;
-
-  if (!locales.includes(locale as AvailableLocale)) {
-    locale = 'en-US';
-  }
-
-  await i18n.changeLanguage(locale);
-
-  return {
-    locale,
-  };
-};
+import { CookieContext } from 'app/providers/cookie-context';
+import { CookieProvider } from 'app/providers/cookie-provider';
 
 const mdxComponents: ComponentProps<typeof MDXProvider>['components'] = {
   h1: (props) => (
     <Text
       {...props}
       as="h1"
+      className="text-3xl font-medium leading-tight lg:text-5xl"
     />
   ),
   h2: (props) => (
@@ -86,47 +73,29 @@ const mdxComponents: ComponentProps<typeof MDXProvider>['components'] = {
   ),
 };
 
-const LayoutContent = ({
-  loaderData,
-}: {
-  loaderData: Route.ComponentProps['loaderData'];
-}) => {
-  const { locale } = loaderData;
-  const { uiColorScheme } = use(CookieContext);
+export const clientMiddleware: Route.ClientMiddlewareFunction[] = [
+  closeAllApiWorkers,
+];
 
-  const { t } = useTranslation();
+const LayoutContent = () => {
+  const { uiColorScheme } = use(CookieContext);
 
   return (
     <html
-      lang={locale}
-      className={uiColorScheme === 'dark' ? 'dark' : ''}
+      lang="en-US"
+      className={uiColorScheme}
     >
       <head>
-        <meta
-          name="description"
-          content={t(
-            'Pillage First! (Ask Questions Later) is a single-player, real-time, browser-based strategy game inspired by Travian. Manage resources to construct buildings, train units, and wage war against your enemies. Remember: pillage first, ask questions later!',
-          )}
-        />
-        <meta
-          name="twitter:card"
-          content="summary"
-        />
-        <meta
-          property="og:url"
-          content="https://pillagefirst.com"
-        />
-        <meta
-          property="og:type"
-          content="website"
-        />
         <HeadLinks />
         <Links />
       </head>
-      <body className="bg-background text-foreground transition-colors duration-300">
+      <body className="bg-background px-safe text-foreground transition-colors">
         <DesktopNavigation />
         <MobileNavigation />
-        <Tooltip id="public-tooltip" />
+        <Tooltip
+          id="public-tooltip"
+          className="text-xs!"
+        />
         <MDXProvider components={mdxComponents}>
           <Outlet />
         </MDXProvider>
@@ -139,10 +108,10 @@ const LayoutContent = ({
   );
 };
 
-export const Layout = ({ loaderData }: Route.ComponentProps) => {
+export const Layout = () => {
   return (
     <CookieProvider>
-      <LayoutContent loaderData={loaderData} />
+      <LayoutContent />
     </CookieProvider>
   );
 };

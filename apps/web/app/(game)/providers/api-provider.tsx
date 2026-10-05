@@ -1,41 +1,56 @@
-import { useQueryClient } from '@tanstack/react-query';
+import { type QueryKey, useQueryClient } from '@tanstack/react-query';
 import { debounce } from 'moderndash';
-import {
-  createContext,
-  type PropsWithChildren,
-  useEffect,
-  useMemo,
-} from 'react';
+import { type PropsWithChildren, useEffect, useMemo } from 'react';
 import type { EventApiNotificationEvent } from '@pillage-first/types/api-events';
 import type { Server } from '@pillage-first/types/models/server';
-import { eventsCacheKey } from 'app/(game)/(village-slug)/constants/query-keys';
 import { useApiWorker } from 'app/(game)/hooks/use-api-worker';
-import { cachesToClearOnResolve } from 'app/(game)/providers/constants/caches-to-clear-on-resolve';
-import { isEventResolvedNotificationMessageEvent } from 'app/(game)/providers/guards/api-notification-event-guards';
+import { useUpdateGameWorldVersionLabel } from 'app/(game)/hooks/use-update-game-world-version-label';
 import {
-  createWorkerFetcher,
-  type Fetcher,
-} from 'app/(game)/providers/utils/worker-fetch';
+  ApiContext,
+  type ApiContextReturn,
+} from 'app/(game)/providers/api-context';
+import { cachesToClearOnResolve } from 'app/(game)/providers/constants/caches-to-clear-on-resolve';
+import { isEventResolvedSuccessfullyNotificationMessageEvent } from 'app/(game)/providers/guards/api-notification-event-guards';
+import { createTypedApiClient } from 'app/(game)/providers/utils/typed-api-client';
+import { createWorkerFetcher } from 'app/(game)/providers/utils/worker-fetch';
+import { reportError } from 'app/instrumentation/report-error';
 
 type ApiProviderProps = {
   serverSlug: Server['slug'];
 };
 
-type ApiContextReturn = {
-  apiWorker: Worker;
-  fetcher: Fetcher;
+export const ApiProviderFallback = () => {
+  return (
+    <div className="flex h-dvh w-full items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_center,theme(colors.amber.50),theme(colors.background)_58%)] px-6 text-foreground dark:bg-[radial-gradient(circle_at_center,theme(colors.stone.900),theme(colors.background)_58%)]">
+      <div
+        className="animate-api-provider-splash flex w-full max-w-md flex-col items-center gap-8 text-center"
+        role="status"
+        aria-live="polite"
+      >
+        <img
+          src="/pillage-first-logo-horizontal.svg"
+          alt="Pillage First! logo"
+          className="animate-api-provider-splash-logo h-auto w-56 max-w-full sm:w-72"
+        />
+        <div className="animate-api-provider-splash-logo flex w-full max-w-56 flex-col gap-3 sm:max-w-xs">
+          <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+            <div className="animate-api-provider-splash-progress h-full w-1/2 rounded-full bg-linear-to-r from-yellow-500 via-amber-400 to-yellow-500" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
-
-export const ApiContext = createContext<ApiContextReturn>(
-  {} as ApiContextReturn,
-);
 
 export const ApiProvider = ({
   children,
   serverSlug,
 }: PropsWithChildren<ApiProviderProps>) => {
   const queryClient = useQueryClient();
-  const { apiWorker } = useApiWorker(serverSlug);
+  const { apiWorker, subscribeToApiWorkerNotifications } =
+    useApiWorker(serverSlug);
+
+  useUpdateGameWorldVersionLabel(serverSlug, !!apiWorker);
 
   useEffect(() => {
     if (!apiWorker) {
@@ -48,17 +63,17 @@ export const ApiProvider = ({
       ReturnType<typeof debounce>
     >();
 
-    const makeDebouncedInvalidator = (
-      keyId: string,
-      resolvedKey: readonly unknown[],
-    ) => {
+    const makeDebouncedInvalidator = (keyId: string, resolvedKey: QueryKey) => {
       const fn = async () => {
         try {
           await queryClient.invalidateQueries({
-            queryKey: Array.from(resolvedKey),
+            queryKey: resolvedKey,
           });
         } catch (error) {
-          console.error('Failed to invalidate query', resolvedKey, error);
+          reportError(error, 'Failed to invalidate query', {
+            queryKey: JSON.stringify(resolvedKey),
+            source: 'ApiProvider',
+          });
         }
       };
 
@@ -69,7 +84,7 @@ export const ApiProvider = ({
     };
 
     const handleMessage = (event: MessageEvent<EventApiNotificationEvent>) => {
-      if (!isEventResolvedNotificationMessageEvent(event)) {
+      if (!isEventResolvedSuccessfullyNotificationMessageEvent(event)) {
         return;
       }
 
@@ -77,32 +92,22 @@ export const ApiProvider = ({
       const { type } = gameEvent;
 
       // @ts-expect-error - We can't provide a generic here, so TS doesn't know which event it's dealing with
-      const cachesToClear = cachesToClearOnResolve[type](gameEvent)!;
+      const cachesToClear = cachesToClearOnResolve[type](gameEvent);
 
       for (const queryKey of cachesToClear) {
         const keyId = JSON.stringify(queryKey);
 
-        const resolvedKey = Array.isArray(queryKey) ? queryKey : [queryKey];
         const debounced =
           debouncedInvalidators.get(keyId) ??
-          makeDebouncedInvalidator(keyId, resolvedKey);
+          makeDebouncedInvalidator(keyId, queryKey);
         debounced();
       }
-
-      // also debounce invalidation of the global events cache key
-      const eventsKeyId = JSON.stringify(eventsCacheKey);
-
-      const evResolvedKey = [eventsCacheKey];
-      const evDebounced =
-        debouncedInvalidators.get(eventsKeyId) ??
-        makeDebouncedInvalidator(eventsKeyId, evResolvedKey);
-      evDebounced();
     };
 
-    apiWorker.addEventListener('message', handleMessage);
+    const unsubscribe = subscribeToApiWorkerNotifications(handleMessage);
 
     return () => {
-      apiWorker.removeEventListener('message', handleMessage);
+      unsubscribe();
 
       // Attempt to cancel pending debounced calls
       for (const debounced of debouncedInvalidators.values()) {
@@ -112,12 +117,14 @@ export const ApiProvider = ({
       }
       debouncedInvalidators.clear();
     };
-  }, [apiWorker, queryClient]);
+  }, [queryClient, subscribeToApiWorkerNotifications, apiWorker]);
 
   const value: ApiContextReturn = useMemo(() => {
+    const fetcher = createWorkerFetcher(apiWorker);
+
     return {
       apiWorker,
-      fetcher: createWorkerFetcher(apiWorker),
+      apiClient: createTypedApiClient(fetcher),
     };
   }, [apiWorker]);
 

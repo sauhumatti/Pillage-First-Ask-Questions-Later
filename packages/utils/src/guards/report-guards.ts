@@ -1,0 +1,68 @@
+import type { ReportListingDto } from '@pillage-first/types/dtos/report';
+import type { Report } from '@pillage-first/types/models/report';
+
+type ReportLike = Report | ReportListingDto;
+
+export const isBattleReport = <T extends ReportLike>(
+  report: T,
+): report is Extract<T, { type: 'battle' }> => {
+  return report.type === 'battle';
+};
+
+export const isAdventureReport = <T extends ReportLike>(
+  report: T,
+): report is Extract<T, { type: 'adventure' }> => {
+  return report.type === 'adventure';
+};
+
+export const isTradeReport = <T extends ReportLike>(
+  report: T,
+): report is Extract<T, { type: 'trade' }> => {
+  return report.type === 'trade';
+};
+
+export const isMovementReport = <T extends ReportLike>(
+  report: T,
+): report is Extract<T, { type: 'movement' }> => {
+  return report.type === 'movement';
+};
+
+export const isHuntingPartyReport = <T extends ReportLike>(
+  report: T,
+): report is Extract<T, { type: 'huntingParty' }> => {
+  return report.type === 'huntingParty';
+};
+
+export const isGatheringExpeditionReport = <T extends ReportLike>(
+  report: T,
+): report is Extract<T, { type: 'gatheringExpedition' }> => {
+  return report.type === 'gatheringExpedition';
+};
+
+export const isScoutingReport = <T extends ReportLike>(
+  report: T,
+): report is Extract<T, { type: 'scouting' }> => report.type === 'scouting';
+
+export const isUnitResearchReport = <T extends ReportLike>(
+  report: T,
+): report is Extract<T, { type: 'unitResearch' }> => {
+  return report.type === 'unitResearch';
+};
+
+export const isUnitImprovementReport = <T extends ReportLike>(
+  report: T,
+): report is Extract<T, { type: 'unitImprovement' }> => {
+  return report.type === 'unitImprovement';
+};
+
+export const isVillageFoundedReport = <T extends ReportLike>(
+  report: T,
+): report is Extract<T, { type: 'villageFounded' }> => {
+  return report.type === 'villageFounded';
+};
+
+export const isScheduledConstructionCancellationReport = <T extends ReportLike>(
+  report: T,
+): report is Extract<T, { type: 'scheduledConstructionCancellation' }> => {
+  return report.type === 'scheduledConstructionCancellation';
+};

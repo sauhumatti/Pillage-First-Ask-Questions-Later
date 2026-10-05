@@ -501,7 +501,17 @@
     "CLAY_PIT": {
       "NAME": "Clay Pit",
       "NAME_other": "Clay Pits",
-      "DESCRIPTION": "Clay is produced here. By increasing its level, you increase the production of clay. Clay pit can be extended to level 20. Clay production can additionally be increased by occupying clay oasis."
+      "DESCRIPTION": "Clay is produced here. By increasing its level, you increase the production of clay."
+    },
+    "GATHERERS_HUT": {
+      "NAME": "Gatherer's Hut",
+      "NAME_other": "Gatherer's Huts",
+      "DESCRIPTION": "The Gatherer's Hut organizes gathering expeditions. Your idle units may join these expeditions and collect resources for your village. Higher levels of Gatherer's Hut allow more units to join the expedition."
+    },
+    "HUNTERS_LODGE": {
+      "NAME": "Hunter's Lodge",
+      "NAME_other": "Hunter's Lodges",
+      "DESCRIPTION": "The Hunter's Lodge organizes hunting parties in nearby oasis. Captured animals are brought back to your village to serve as reinforcements. Higher levels of this building allow hunters to capture stronger animals. Hunters also manufacture traps you can use with your Hero to capture animals yourself."
     },
     "EMBASSY": {
       "NAME": "Embassy",
@@ -516,7 +526,7 @@
     "WHEAT_FIELD": {
       "NAME": "Wheat Field",
       "NAME_other": "Wheat Fields",
-      "DESCRIPTION": "Wheat is produced here. By increasing its level you increase the production of wheat. Wheat Field can be extended to level 20. Wheat production can additionally be increased by occupying wheat oasis."
+      "DESCRIPTION": "Wheat is produced here. By increasing its level you increase the production of wheat."
     },
     "GRAIN_MILL": {
       "NAME": "Grain Mill",
@@ -541,7 +551,7 @@
     "IRON_MINE": {
       "NAME": "Iron Mine",
       "NAME_other": "Iron Mines",
-      "DESCRIPTION": "Iron is produced here. By increasing its level you increase the production of iron. Iron Mine can be extended to level 20. Iron production can additionally be increased by occupying mountain oasis."
+      "DESCRIPTION": "Iron is produced here. By increasing its level you increase the production of iron."
     },
     "SAWMILL": {
       "NAME": "Sawmill",
@@ -566,7 +576,7 @@
     "WOODCUTTER": {
       "NAME": "Woodcutter",
       "NAME_other": "Woodcutters",
-      "DESCRIPTION": "Wood is produced here. By increasing its level you increase the production of wood. Woodcutter can be extended to level 20. Wood production can additionally be increased by occupying forrest oasis."
+      "DESCRIPTION": "Wood is produced here. By increasing its level you increase the production of wood."
     },
     "ACADEMY": {
       "NAME": "Academy",
@@ -601,12 +611,17 @@
     "HEROS_MANSION": {
       "NAME": "Hero's Mansion",
       "NAME_other": "Hero's Mansions",
-      "DESCRIPTION": "The Hero's Mansion is the home of your glorious hero. At building levels 10, 15 and 20, you can use your hero to annex an unoccupied oasis to your village, one per each of these levels respectively. Depending on the oasis, you will get a production increase for a certain type of resource (or even two resources, from some oases)."
+      "DESCRIPTION": "The Hero's Mansion is the home of your glorious hero. At building levels 10, 15 and 20, you can use your hero to annex an unoccupied oasis to your village, one per each of these levels respectively. Depending on the oasis, you will get a production increase for a certain type of resource."
     },
     "HOSPITAL": {
       "NAME": "Hospital",
       "NAME_other": "Hospitals",
-      "DESCRIPTION": "The Hospital allows you to treat wounded troops after combat. These can be healed and made ready for war again. Together with regular training in Barracks and Stable your army can recover faster than ever."
+      "DESCRIPTION": "The Hospital allows you to treat wounded troops after combat. These can be healed and made ready for war again. Together with regular training in Barracks and Stable your army can recover faster than ever. Healing costs the same resources as training the unit, but it takes half the normal training time at the same building level."
+    },
+    "ASCLEPEION": {
+      "NAME": "Asclepeion",
+      "NAME_other": "Asclepeions",
+      "DESCRIPTION": "The Asclepeion is the Spartan version of the Hospital. It treats wounded troops after combat and returns a larger share of eligible losses as wounded troops. Healing costs the same resources as training the unit, but it takes half the normal training time at the same building level."
     },
     "HUN_WALL": {
       "NAME": "Makeshift Wall",
@@ -621,7 +636,7 @@
     "RALLY_POINT": {
       "NAME": "Rally Point",
       "NAME_other": "Rally Points",
-      "DESCRIPTION": "Your village's troops gather here. From here, you can send them out to conquer, raid or reinforce other villages. The Rally Point can only be built on the green grassland below and to the right of your Main Building. If there are less attacking units than the level of the Rally Point, you can see the type of unit attacking."
+      "DESCRIPTION": "Your village's troops gather here. From here, you can send them out to conquer, raid or reinforce other villages. If there are less attacking units than the level of the Rally Point, you can see the type of unit attacking."
     },
     "STABLE": {
       "NAME": "Stable",
@@ -666,7 +681,7 @@
     "MAIN_BUILDING": {
       "NAME": "Main Building",
       "NAME_other": "Main Buildings",
-      "DESCRIPTION": "The village's master builders live in the Main Building. The higher its level, the faster your master builders complete the construction of new buildings."
+      "DESCRIPTION": "The village's master builders live in the Main Building. The higher its level, the faster your builders complete the construction of new buildings."
     },
     "MARKETPLACE": {
       "NAME": "Marketplace",
@@ -676,7 +691,7 @@
     "RESIDENCE": {
       "NAME": "Residence",
       "NAME_other": "Residences",
-      "DESCRIPTION": "The Residence protects the village against enemy conquests. You can build one Residence per village. Units that can found a new village or conquer existing villages can be trained here. Additionally, the Residence provides an expansion slot at levels 10 and 20 each."
+      "DESCRIPTION": "The Residence protects the village against enemy conquests. Units that can found a new village or conquer existing villages can be trained here."
     },
     "TREASURY": {
       "NAME": "Treasury",
@@ -700,140 +715,420 @@
     }
   },
   "ITEMS": {
-    "UNCOMMON_ARTIFACT_MILITARY_TROOP_TRAVEL_SPEED": {
-      "NAME": "Weathered artifact of speed",
-      "NAME_other": "Weathered artifacts of speed",
-      "DESCRIPTION": ""
+    "COMMON_ARTIFACT_WOOD_PRODUCTION": {
+      "NAME": "Weathered wood production artifact",
+      "NAME_other": "Weathered wood production artifacts",
+      "DESCRIPTION": "Adds 50 wood production in this village."
     },
-    "UNCOMMON_ARTIFACT_MILITARY_TROOP_CARRYING_CAPACITY": {
-      "NAME": "Weathered artifact of carrying",
-      "NAME_other": "Weathered artifacts of carrying",
-      "DESCRIPTION": ""
+    "COMMON_ARTIFACT_WOOD_PRODUCTION_BONUS": {
+      "NAME": "Weathered wood production bonus artifact",
+      "NAME_other": "Weathered wood production bonus artifacts",
+      "DESCRIPTION": "Increases wood production by 5% in this village."
     },
-    "UNCOMMON_ARTIFACT_MILITARY_TROOP_TRAINING_REDUCTION": {
+    "COMMON_ARTIFACT_CLAY_PRODUCTION": {
+      "NAME": "Weathered clay production artifact",
+      "NAME_other": "Weathered clay production artifacts",
+      "DESCRIPTION": "Adds 50 clay production in this village."
+    },
+    "COMMON_ARTIFACT_CLAY_PRODUCTION_BONUS": {
+      "NAME": "Weathered clay production bonus artifact",
+      "NAME_other": "Weathered clay production bonus artifacts",
+      "DESCRIPTION": "Increases clay production by 5% in this village."
+    },
+    "COMMON_ARTIFACT_IRON_PRODUCTION": {
+      "NAME": "Weathered iron production artifact",
+      "NAME_other": "Weathered iron production artifacts",
+      "DESCRIPTION": "Adds 50 iron production in this village."
+    },
+    "COMMON_ARTIFACT_IRON_PRODUCTION_BONUS": {
+      "NAME": "Weathered iron production bonus artifact",
+      "NAME_other": "Weathered iron production bonus artifacts",
+      "DESCRIPTION": "Increases iron production by 5% in this village."
+    },
+    "COMMON_ARTIFACT_WHEAT_PRODUCTION": {
+      "NAME": "Weathered wheat production artifact",
+      "NAME_other": "Weathered wheat production artifacts",
+      "DESCRIPTION": "Adds 50 wheat production in this village."
+    },
+    "COMMON_ARTIFACT_WHEAT_PRODUCTION_BONUS": {
+      "NAME": "Weathered wheat production bonus artifact",
+      "NAME_other": "Weathered wheat production bonus artifacts",
+      "DESCRIPTION": "Increases wheat production by 5% in this village."
+    },
+    "UNCOMMON_ARTIFACT_WOOD_PRODUCTION": {
+      "NAME": "Honed wood production artifact",
+      "NAME_other": "Honed wood production artifacts",
+      "DESCRIPTION": "Adds 100 wood production in this village."
+    },
+    "UNCOMMON_ARTIFACT_WOOD_PRODUCTION_BONUS": {
+      "NAME": "Honed wood production bonus artifact",
+      "NAME_other": "Honed wood production bonus artifacts",
+      "DESCRIPTION": "Increases wood production by 7.5% in this village."
+    },
+    "UNCOMMON_ARTIFACT_CLAY_PRODUCTION": {
+      "NAME": "Honed clay production artifact",
+      "NAME_other": "Honed clay production artifacts",
+      "DESCRIPTION": "Adds 100 clay production in this village."
+    },
+    "UNCOMMON_ARTIFACT_CLAY_PRODUCTION_BONUS": {
+      "NAME": "Honed clay production bonus artifact",
+      "NAME_other": "Honed clay production bonus artifacts",
+      "DESCRIPTION": "Increases clay production by 7.5% in this village."
+    },
+    "UNCOMMON_ARTIFACT_IRON_PRODUCTION": {
+      "NAME": "Honed iron production artifact",
+      "NAME_other": "Honed iron production artifacts",
+      "DESCRIPTION": "Adds 100 iron production in this village."
+    },
+    "UNCOMMON_ARTIFACT_IRON_PRODUCTION_BONUS": {
+      "NAME": "Honed iron production bonus artifact",
+      "NAME_other": "Honed iron production bonus artifacts",
+      "DESCRIPTION": "Increases iron production by 7.5% in this village."
+    },
+    "UNCOMMON_ARTIFACT_WHEAT_PRODUCTION": {
+      "NAME": "Honed wheat production artifact",
+      "NAME_other": "Honed wheat production artifacts",
+      "DESCRIPTION": "Adds 100 wheat production in this village."
+    },
+    "UNCOMMON_ARTIFACT_WHEAT_PRODUCTION_BONUS": {
+      "NAME": "Honed wheat production bonus artifact",
+      "NAME_other": "Honed wheat production bonus artifacts",
+      "DESCRIPTION": "Increases wheat production by 7.5% in this village."
+    },
+    "RARE_ARTIFACT_WOOD_PRODUCTION": {
+      "NAME": "Natarian wood production artifact",
+      "NAME_other": "Natarian wood production artifacts",
+      "DESCRIPTION": "Adds 150 wood production in this village."
+    },
+    "RARE_ARTIFACT_WOOD_PRODUCTION_BONUS": {
+      "NAME": "Natarian wood production bonus artifact",
+      "NAME_other": "Natarian wood production bonus artifacts",
+      "DESCRIPTION": "Increases wood production by 10% in this village."
+    },
+    "RARE_ARTIFACT_CLAY_PRODUCTION": {
+      "NAME": "Natarian clay production artifact",
+      "NAME_other": "Natarian clay production artifacts",
+      "DESCRIPTION": "Adds 150 clay production in this village."
+    },
+    "RARE_ARTIFACT_CLAY_PRODUCTION_BONUS": {
+      "NAME": "Natarian clay production bonus artifact",
+      "NAME_other": "Natarian clay production bonus artifacts",
+      "DESCRIPTION": "Increases clay production by 10% in this village."
+    },
+    "RARE_ARTIFACT_IRON_PRODUCTION": {
+      "NAME": "Natarian iron production artifact",
+      "NAME_other": "Natarian iron production artifacts",
+      "DESCRIPTION": "Adds 150 iron production in this village."
+    },
+    "RARE_ARTIFACT_IRON_PRODUCTION_BONUS": {
+      "NAME": "Natarian iron production bonus artifact",
+      "NAME_other": "Natarian iron production bonus artifacts",
+      "DESCRIPTION": "Increases iron production by 10% in this village."
+    },
+    "RARE_ARTIFACT_WHEAT_PRODUCTION": {
+      "NAME": "Natarian wheat production artifact",
+      "NAME_other": "Natarian wheat production artifacts",
+      "DESCRIPTION": "Adds 150 wheat production in this village."
+    },
+    "RARE_ARTIFACT_WHEAT_PRODUCTION_BONUS": {
+      "NAME": "Natarian wheat production bonus artifact",
+      "NAME_other": "Natarian wheat production bonus artifacts",
+      "DESCRIPTION": "Increases wheat production by 10% in this village."
+    },
+    "COMMON_ARTIFACT_BUILD_TIME_REDUCTION": {
+      "NAME": "Weathered artifact of construction",
+      "NAME_other": "Weathered artifacts of construction",
+      "DESCRIPTION": "Reduces building construction time by 10% in this village."
+    },
+    "UNCOMMON_ARTIFACT_BUILD_TIME_REDUCTION": {
+      "NAME": "Honed artifact of construction",
+      "NAME_other": "Honed artifacts of construction",
+      "DESCRIPTION": "Reduces building construction time by 20% in this village."
+    },
+    "RARE_ARTIFACT_BUILD_TIME_REDUCTION": {
+      "NAME": "Natarian artifact of construction",
+      "NAME_other": "Natarian artifacts of construction",
+      "DESCRIPTION": "Reduces building construction time by 30% in this village."
+    },
+    "COMMON_ARTIFACT_CRANNY_CAPACITY": {
+      "NAME": "Weathered artifact of concealment",
+      "NAME_other": "Weathered artifacts of concealment",
+      "DESCRIPTION": "Increases cranny capacity by 1,000 in this village."
+    },
+    "UNCOMMON_ARTIFACT_CRANNY_CAPACITY": {
+      "NAME": "Honed artifact of concealment",
+      "NAME_other": "Honed artifacts of concealment",
+      "DESCRIPTION": "Increases cranny capacity by 2,000 in this village."
+    },
+    "RARE_ARTIFACT_CRANNY_CAPACITY": {
+      "NAME": "Natarian artifact of concealment",
+      "NAME_other": "Natarian artifacts of concealment",
+      "DESCRIPTION": "Increases cranny capacity by 3,000 in this village."
+    },
+    "COMMON_ARTIFACT_TROOP_TRAINING_REDUCTION": {
       "NAME": "Weathered artifact of training",
       "NAME_other": "Weathered artifacts of training",
-      "DESCRIPTION": ""
+      "DESCRIPTION": "Reduces troop training time by 10% in this village."
     },
-    "UNCOMMON_ARTIFACT_MILITARY_TROOP_WHEAT_CONSUMPTION_REDUCTION": {
-      "NAME": "Weathered artifact of hunger",
-      "NAME_other": "Weathered artifacts of hunger",
-      "DESCRIPTION": ""
-    },
-    "UNCOMMON_ARTIFACT_CIVIL_BUILD_TIME_REDUCTION": {
-      "NAME": "Weathered artifact of building",
-      "NAME_other": "Weathered artifacts of building",
-      "DESCRIPTION": ""
-    },
-    "UNCOMMON_ARTIFACT_CIVIL_OASIS_PRODUCTION_BONUS": {
-      "NAME": "Weathered artifact of oasis",
-      "NAME_other": "Weathered artifacts of oasis",
-      "DESCRIPTION": ""
-    },
-    "UNCOMMON_ARTIFACT_CIVIL_RESOURCE_PRODUCTION_BONUS": {
-      "NAME": "Weathered artifact of resources",
-      "NAME_other": "Weathered artifacts of resources",
-      "DESCRIPTION": ""
-    },
-    "RARE_ARTIFACT_MILITARY_TROOP_TRAVEL_SPEED": {
-      "NAME": "Honed artifact of speed",
-      "NAME_other": "Honed artifacts of speed",
-      "DESCRIPTION": ""
-    },
-    "RARE_ARTIFACT_MILITARY_TROOP_CARRYING_CAPACITY": {
-      "NAME": "Honed artifact of carrying",
-      "NAME_other": "Honed artifacts of carrying",
-      "DESCRIPTION": ""
-    },
-    "RARE_ARTIFACT_MILITARY_TROOP_TRAINING_REDUCTION": {
+    "UNCOMMON_ARTIFACT_TROOP_TRAINING_REDUCTION": {
       "NAME": "Honed artifact of training",
       "NAME_other": "Honed artifacts of training",
-      "DESCRIPTION": ""
+      "DESCRIPTION": "Reduces troop training time by 20% in this village."
     },
-    "RARE_ARTIFACT_MILITARY_TROOP_WHEAT_CONSUMPTION_REDUCTION": {
-      "NAME": "Honed artifact of hunger",
-      "NAME_other": "Honed artifacts of hunger",
-      "DESCRIPTION": ""
-    },
-    "RARE_ARTIFACT_CIVIL_BUILD_TIME_REDUCTION": {
-      "NAME": "Honed artifact of building",
-      "NAME_other": "Honed artifacts of building",
-      "DESCRIPTION": ""
-    },
-    "RARE_ARTIFACT_CIVIL_OASIS_PRODUCTION_BONUS": {
-      "NAME": "Honed artifact of oasis",
-      "NAME_other": "Honed artifacts of oasis",
-      "DESCRIPTION": ""
-    },
-    "RARE_ARTIFACT_CIVIL_RESOURCE_PRODUCTION_BONUS": {
-      "NAME": "Honed artifact of resources",
-      "NAME_other": "Honed artifacts of resources",
-      "DESCRIPTION": ""
-    },
-    "EPIC_ARTIFACT_MILITARY_TROOP_TRAVEL_SPEED": {
-      "NAME": "Natarian artifact of speed",
-      "NAME_other": "Natarian artifacts of speed",
-      "DESCRIPTION": ""
-    },
-    "EPIC_ARTIFACT_MILITARY_TROOP_CARRYING_CAPACITY": {
-      "NAME": "Natarian artifact of carrying",
-      "NAME_other": "Natarian artifacts of carrying",
-      "DESCRIPTION": ""
-    },
-    "EPIC_ARTIFACT_MILITARY_TROOP_TRAINING_REDUCTION": {
+    "RARE_ARTIFACT_TROOP_TRAINING_REDUCTION": {
       "NAME": "Natarian artifact of training",
       "NAME_other": "Natarian artifacts of training",
-      "DESCRIPTION": ""
+      "DESCRIPTION": "Reduces troop training time by 30% in this village."
     },
-    "EPIC_ARTIFACT_MILITARY_TROOP_WHEAT_CONSUMPTION_REDUCTION": {
-      "NAME": "Natarian artifact of hunger",
-      "NAME_other": "Natarian artifacts of hunger",
-      "DESCRIPTION": ""
+    "COMMON_ARTIFACT_REVEALED_INCOMING_TROOPS": {
+      "NAME": "Weathered artifact of warning",
+      "NAME_other": "Weathered artifacts of warning",
+      "DESCRIPTION": "Reveals up to 20 troops in incoming attacks."
     },
-    "EPIC_ARTIFACT_CIVIL_BUILD_TIME_REDUCTION": {
-      "NAME": "Natarian artifact of building",
-      "NAME_other": "Natarian artifacts of building",
-      "DESCRIPTION": ""
+    "UNCOMMON_ARTIFACT_REVEALED_INCOMING_TROOPS": {
+      "NAME": "Honed artifact of warning",
+      "NAME_other": "Honed artifacts of warning",
+      "DESCRIPTION": "Reveals up to 50 troops in incoming attacks."
     },
-    "EPIC_ARTIFACT_CIVIL_OASIS_PRODUCTION_BONUS": {
-      "NAME": "Natarian artifact of oasis",
-      "NAME_other": "Natarian artifacts of oasis",
-      "DESCRIPTION": ""
+    "RARE_ARTIFACT_REVEALED_INCOMING_TROOPS": {
+      "NAME": "Natarian artifact of warning",
+      "NAME_other": "Natarian artifacts of warning",
+      "DESCRIPTION": "Reveals up to 100 troops in incoming attacks."
     },
-    "EPIC_ARTIFACT_CIVIL_RESOURCE_PRODUCTION_BONUS": {
-      "NAME": "Natarian artifact of resources",
-      "NAME_other": "Natarian artifacts of resources",
-      "DESCRIPTION": ""
+    "COMMON_ARTIFACT_MERCHANT_CAPACITY": {
+      "NAME": "Weathered artifact of hauling",
+      "NAME_other": "Weathered artifacts of hauling",
+      "DESCRIPTION": "Increases merchant capacity by 10% in this village."
     },
-    "EPIC_ARTIFACT_CIVIL_ENABLE_GREAT_BUILDINGS": {
-      "NAME": "Natarian artifact of storage",
-      "NAME_other": "Natarian artifacts of storage",
-      "DESCRIPTION": ""
+    "UNCOMMON_ARTIFACT_MERCHANT_CAPACITY": {
+      "NAME": "Honed artifact of hauling",
+      "NAME_other": "Honed artifacts of hauling",
+      "DESCRIPTION": "Increases merchant capacity by 20% in this village."
     },
-    "SILVER": {
-      "NAME": "Silver",
-      "NAME_other": "Silver",
-      "DESCRIPTION": ""
+    "RARE_ARTIFACT_MERCHANT_CAPACITY": {
+      "NAME": "Natarian artifact of hauling",
+      "NAME_other": "Natarian artifacts of hauling",
+      "DESCRIPTION": "Increases merchant capacity by 30% in this village."
+    },
+    "COMMON_ARTIFACT_UNIT_IMPROVEMENT_DURATION": {
+      "NAME": "Weathered artifact of forging",
+      "NAME_other": "Weathered artifacts of forging",
+      "DESCRIPTION": "Reduces smithy upgrade time by 10% in this village."
+    },
+    "UNCOMMON_ARTIFACT_UNIT_IMPROVEMENT_DURATION": {
+      "NAME": "Honed artifact of forging",
+      "NAME_other": "Honed artifacts of forging",
+      "DESCRIPTION": "Reduces smithy upgrade time by 30% in this village."
+    },
+    "RARE_ARTIFACT_UNIT_IMPROVEMENT_DURATION": {
+      "NAME": "Natarian artifact of forging",
+      "NAME_other": "Natarian artifacts of forging",
+      "DESCRIPTION": "Reduces smithy upgrade time by 50% in this village."
+    },
+    "COMMON_ARTIFACT_UNIT_SPEED": {
+      "NAME": "Weathered artifact of marching",
+      "NAME_other": "Weathered artifacts of marching",
+      "DESCRIPTION": "Increases unit speed by 5% from this village."
+    },
+    "COMMON_ARTIFACT_UNIT_SPEED_AFTER_20_FIELDS": {
+      "NAME": "Weathered artifact of endurance",
+      "NAME_other": "Weathered artifacts of endurance",
+      "DESCRIPTION": "Increases unit speed by 5% after 20 fields."
+    },
+    "UNCOMMON_ARTIFACT_UNIT_SPEED": {
+      "NAME": "Honed artifact of marching",
+      "NAME_other": "Honed artifacts of marching",
+      "DESCRIPTION": "Increases unit speed by 10% from this village."
+    },
+    "UNCOMMON_ARTIFACT_UNIT_SPEED_AFTER_20_FIELDS": {
+      "NAME": "Honed artifact of endurance",
+      "NAME_other": "Honed artifacts of endurance",
+      "DESCRIPTION": "Increases unit speed by 10% after 20 fields."
+    },
+    "RARE_ARTIFACT_UNIT_SPEED": {
+      "NAME": "Natarian artifact of marching",
+      "NAME_other": "Natarian artifacts of marching",
+      "DESCRIPTION": "Increases unit speed by 15% from this village."
+    },
+    "RARE_ARTIFACT_UNIT_SPEED_AFTER_20_FIELDS": {
+      "NAME": "Natarian artifact of endurance",
+      "NAME_other": "Natarian artifacts of endurance",
+      "DESCRIPTION": "Increases unit speed by 15% after 20 fields."
+    },
+    "COMMON_HORSE": {
+      "NAME": "Common horse",
+      "NAME_other": "Common horses",
+      "DESCRIPTION": "Increases hero speed by 7."
+    },
+    "UNCOMMON_HORSE": {
+      "NAME": "Uncommon horse",
+      "NAME_other": "Uncommon horses",
+      "DESCRIPTION": "Increases hero speed by 9."
+    },
+    "RARE_HORSE": {
+      "NAME": "Rare horse",
+      "NAME_other": "Rare horses",
+      "DESCRIPTION": "Increases hero speed by 11."
     },
     "HEALING_POTION": {
       "NAME": "Healing potion",
       "NAME_other": "Healing potions",
-      "DESCRIPTION": ""
+      "DESCRIPTION": "Restores 1 hero health per potion."
     },
     "BOOK_OF_WISDOM": {
       "NAME": "Book of Wisdom",
       "NAME_other": "Books of Wisdom",
-      "DESCRIPTION": ""
+      "DESCRIPTION": "Resets hero attributes for redistribution."
     },
     "ANIMAL_CAGE": {
       "NAME": "Animal cage",
       "NAME_other": "Animal cages",
-      "DESCRIPTION": ""
+      "DESCRIPTION": "Lets your hero capture animals from oases."
     },
     "REVIVAL_POTION": {
       "NAME": "Revival potion",
       "NAME_other": "Revival potions",
-      "DESCRIPTION": ""
+      "DESCRIPTION": "Revives a fallen hero."
+    },
+    "SILVER": {
+      "NAME": "Silver",
+      "NAME_other": "Silver",
+      "DESCRIPTION": "Currency used for hero auctions."
+    },
+    "EXPERIENCE_SCROLL": {
+      "NAME": "Experience scroll",
+      "NAME_other": "Experience scrolls",
+      "DESCRIPTION": "Grants 10 hero experience."
+    },
+    "ADVENTURE_MAP": {
+      "NAME": "Adventure map",
+      "NAME_other": "Adventure maps",
+      "DESCRIPTION": "Reveals a new hero adventure."
+    },
+    "LOYALTY_SEAL": {
+      "NAME": "Loyalty seal",
+      "NAME_other": "Loyalty seals",
+      "DESCRIPTION": "Restores loyalty to a village."
+    },
+    "COMMON_BOOTS": {
+      "NAME": "Worn Boots",
+      "NAME_other": "Worn Boots",
+      "DESCRIPTION": "Increases hero speed by 3."
+    },
+    "UNCOMMON_BOOTS": {
+      "NAME": "Sturdy Boots",
+      "NAME_other": "Sturdy Boots",
+      "DESCRIPTION": "Increases hero speed by 5."
+    },
+    "RARE_BOOTS": {
+      "NAME": "Reinforced Boots",
+      "NAME_other": "Reinforced Boots",
+      "DESCRIPTION": "Increases hero speed by 7."
+    },
+    "COMMON_HELMET": {
+      "NAME": "Worn Helmet",
+      "NAME_other": "Worn Helmets",
+      "DESCRIPTION": "Increases hero experience gains by 5%."
+    },
+    "UNCOMMON_HELMET": {
+      "NAME": "Sturdy Helmet",
+      "NAME_other": "Sturdy Helmets",
+      "DESCRIPTION": "Increases hero experience gains by 10%."
+    },
+    "RARE_HELMET": {
+      "NAME": "Reinforced Helmet",
+      "NAME_other": "Reinforced Helmets",
+      "DESCRIPTION": "Increases hero experience gains by 15%."
+    },
+    "COMMON_LEG_GUARDS": {
+      "NAME": "Worn Leg Guards",
+      "NAME_other": "Worn Leg Guards",
+      "DESCRIPTION": "Regenerates 10 hero health per day."
+    },
+    "UNCOMMON_LEG_GUARDS": {
+      "NAME": "Sturdy Leg Guards",
+      "NAME_other": "Sturdy Leg Guards",
+      "DESCRIPTION": "Regenerates 20 hero health per day."
+    },
+    "RARE_LEG_GUARDS": {
+      "NAME": "Reinforced Leg Guards",
+      "NAME_other": "Reinforced Leg Guards",
+      "DESCRIPTION": "Regenerates 30 hero health per day."
+    },
+    "COMMON_LEATHER_BODY_ARMOR": {
+      "NAME": "Worn Leather Body Armor",
+      "NAME_other": "Worn Leather Body Armor",
+      "DESCRIPTION": "Reduces hero damage taken by 2 points."
+    },
+    "COMMON_MAIL_BODY_ARMOR": {
+      "NAME": "Worn Mail Body Armor",
+      "NAME_other": "Worn Mail Body Armor",
+      "DESCRIPTION": "Increases hero's strength by 75 and reduces damage taken by 1 point."
+    },
+    "COMMON_PLATE_BODY_ARMOR": {
+      "NAME": "Worn Plate Body Armor",
+      "NAME_other": "Worn Plate Body Armor",
+      "DESCRIPTION": "Increases hero's strength by 150."
+    },
+    "UNCOMMON_LEATHER_BODY_ARMOR": {
+      "NAME": "Sturdy Leather Body Armor",
+      "NAME_other": "Sturdy Leather Body Armor",
+      "DESCRIPTION": "Reduces hero damage taken by 4 points."
+    },
+    "UNCOMMON_MAIL_BODY_ARMOR": {
+      "NAME": "Sturdy Mail Body Armor",
+      "NAME_other": "Sturdy Mail Body Armor",
+      "DESCRIPTION": "Increases hero's strength by 150 and reduces damage taken by 2 points."
+    },
+    "UNCOMMON_PLATE_BODY_ARMOR": {
+      "NAME": "Sturdy Plate Body Armor",
+      "NAME_other": "Sturdy Plate Body Armor",
+      "DESCRIPTION": "Increases hero's strength by 300."
+    },
+    "RARE_LEATHER_BODY_ARMOR": {
+      "NAME": "Reinforced Leather Body Armor",
+      "NAME_other": "Reinforced Leather Body Armor",
+      "DESCRIPTION": "Reduces hero damage taken by 6 points."
+    },
+    "RARE_MAIL_BODY_ARMOR": {
+      "NAME": "Reinforced Mail Body Armor",
+      "NAME_other": "Reinforced Mail Body Armor",
+      "DESCRIPTION": "Increases hero's strength by 225 and reduces damage taken by 3 points."
+    },
+    "RARE_PLATE_BODY_ARMOR": {
+      "NAME": "Reinforced Plate Body Armor",
+      "NAME_other": "Reinforced Plate Body Armor",
+      "DESCRIPTION": "Increases hero's strength by 450."
+    },
+    "COMMON_SWORD": {
+      "NAME": "Worn Sword",
+      "NAME_other": "Worn Sword",
+      "DESCRIPTION": "Increases hero's strength by 150."
+    },
+    "COMMON_SHIELD": {
+      "NAME": "Worn Shield",
+      "NAME_other": "Worn Shield",
+      "DESCRIPTION": "Reduces hero damage taken by 2 points."
+    },
+    "UNCOMMON_SWORD": {
+      "NAME": "Sturdy Sword",
+      "NAME_other": "Sturdy Sword",
+      "DESCRIPTION": "Increases hero's strength by 300."
+    },
+    "UNCOMMON_SHIELD": {
+      "NAME": "Sturdy Shield",
+      "NAME_other": "Sturdy Shield",
+      "DESCRIPTION": "Reduces hero damage taken by 4 points."
+    },
+    "RARE_SWORD": {
+      "NAME": "Reinforced Sword",
+      "NAME_other": "Reinforced Sword",
+      "DESCRIPTION": "Increases hero's strength by 450."
+    },
+    "RARE_SHIELD": {
+      "NAME": "Reinforced Shield",
+      "NAME_other": "Reinforced Shield",
+      "DESCRIPTION": "Reduces hero damage taken by 6 points."
     }
   },
   "QUESTS": {
@@ -844,12 +1139,12 @@
       "DESCRIPTION_other": "Send your hero on {{count}} adventures.",
       "GROUP": "Adventures"
     },
-    "TROOP-COUNT": {
+    "QUEUED-TROOP-COUNT": {
       "NAME": "Train {{count}} units of any kind",
-      "DESCRIPTION": "Begin training of {{count}} units of any kind.",
+      "DESCRIPTION": "Begin training of {{count}} units of any kind in total.",
       "GROUP": "Train units"
     },
-    "UNIT-TROOP-COUNT": {
+    "QUEUED-TROOP-COUNT-BY-ID": {
       "NAME": "Train {{count}} {{asset}}",
       "DESCRIPTION": "Begin training of at least {{count}} {{asset}} in total.",
       "GROUP": "Train units"
@@ -864,13 +1159,28 @@
       "DESCRIPTION": "Defeat a total of {{count}} enemy {{asset}} in battle.",
       "GROUP": "Defeat units"
     },
+    "CAPTURE-ANIMAL-COUNT-BY-ID": {
+      "NAME": "Capture {{count}} {{asset}}",
+      "DESCRIPTION": "Capture a total of {{count}} {{asset}} with the Hunter's Lodge.",
+      "GROUP": "Capture animals"
+    },
+    "CAPTURE-ANIMAL-KIND-COUNT": {
+      "NAME": "Capture one of each animal",
+      "DESCRIPTION": "Capture at least one of every animal type with the Hunter's Lodge.",
+      "GROUP": "Capture animals"
+    },
+    "GATHERED-RESOURCE-COUNT": {
+      "NAME": "Gather {{count}} resources",
+      "DESCRIPTION": "Gather a total of {{count}} resources with Gatherer's Hut expeditions.",
+      "GROUP": "Gather resources"
+    },
     "ONE-OF": {
       "NAME": "{{asset}} to level {{count}}",
       "DESCRIPTION": "Upgrade the {{asset}} to level {{count}}.",
       "GROUP": "{{asset}}"
     },
     "EVERY": {
-      "NAME": "All {{asset}} level {{count}}",
+      "NAME": "All {{asset}} to level {{count}}",
       "DESCRIPTION": "Upgrade all {{asset}} to level {{count}}.",
       "GROUP": "All {{asset}}"
     }
@@ -914,6 +1224,7 @@
   },
   "ICONS": {
     "missingIcon": "Missing icon",
+    "archived": "Archived",
     "wood": "Wood",
     "clay": "Clay",
     "iron": "Iron",
@@ -925,6 +1236,7 @@
     "clayClay": "Clay and clay",
     "ironIron": "Iron and iron",
     "wheatWheat": "Wheat and wheat",
+    "mapFiltersToggle": "Map filters",
     "mapMagnificationIncrease": "Zoom in",
     "mapMagnificationDecrease": "Zoom out",
     "mapReputationToggle": "Toggle reputation",
@@ -932,21 +1244,31 @@
     "mapTroopMovementsToggle": "Toggle troop movements",
     "mapWheatFieldIconToggle": "Toggle wheat field icons",
     "mapTileTooltipToggle": "Toggle tile tooltips",
-    "mapTreasureIconToggle": "Toggle treasures",
-    "treasureTileItem": "Treasure item",
-    "treasureTileResources": "Treasure resources",
-    "treasureTileArtifact": "Treasure artifact",
-    "treasureTileCurrency": "Treasure currency",
-    "treasureTileMiscellaneous": "Miscellaneous treasure",
     "attackerNoLoss": "Attacker (no loss)",
     "attackerSomeLoss": "Attacker (some loss)",
     "attackerFullLoss": "Attacker (full loss)",
     "defenderNoLoss": "Defender (no loss)",
     "defenderSomeLoss": "Defender (some loss)",
     "defenderFullLoss": "Defender (full loss)",
+    "scoutAttackerNoLoss": "Scouting attacker (no loss)",
+    "scoutAttackerSomeLoss": "Scouting attacker (some loss)",
+    "scoutAttackerFullLoss": "Scouting attacker (full loss)",
+    "scoutDefenderNoLoss": "Scouting defender (no loss)",
+    "scoutDefenderSomeLoss": "Scouting defender (some loss)",
+    "scoutDefenderFullLoss": "Scouting defender (full loss)",
+    "outgoingMerchantsArrived": "Outgoing merchants arrived",
+    "incomingMerchantsArrived": "Incoming merchants arrived",
+    "heroAdventure": "Hero adventure",
+    "troopMovement": "Troop movement",
+    "unitResearched": "Unit researched",
+    "unitImproved": "Unit improved",
+    "villageFounded": "Village founded",
+    "scheduledConstructionCancelled": "Scheduled construction cancelled",
     "mapMarker": "Map marker",
-    "freeCrop": "Free crop",
     "culturePoints": "Culture points",
+    "troopLosses": "Troop losses",
+    "troopsHospitalized": "Hospitalized troops",
+    "troopsImprisoned": "Imprisoned troops",
     "populationCropConsumption": "Population crop consumption",
     "troopsCropConsumption": "Troops crop consumption",
     "warehouseCapacity": "Warehouse capacity",
@@ -1031,6 +1353,16 @@
     "hunCatapult": "Hun catapult",
     "hunChief": "Hun chief",
     "hunSettler": "Hun settler",
+    "hoplite": "Hoplite",
+    "shieldsman": "Shieldsman",
+    "twinsteelTherion": "Twinsteel Therion",
+    "spartanScout": "Spartan scout",
+    "elpidaRider": "Elpida rider",
+    "corinthianCrusher": "Corinthian crusher",
+    "spartanRam": "Spartan ram",
+    "spartanCatapult": "Spartan catapult",
+    "spartanChief": "Spartan chief",
+    "spartanSettler": "Spartan settler",
     "pikeman": "Pikeman",
     "thornedWarrior": "Thorned warrior",
     "guardsman": "Guardsman",
@@ -1056,6 +1388,9 @@
     "offensiveMovementOutgoing": "Offensive movement (outgoing)",
     "offensiveMovementIncoming": "Offensive movement (incoming)",
     "adventure": "Adventure",
+    "huntingParty": "Hunting party",
+    "gatheringExpedition": "Gathering expedition",
+    "gatheringTrip": "Gathering trip",
     "positiveChange": "Increase",
     "negativeChange": "Decrease",
     "merchantSpeed": "Merchant speed",

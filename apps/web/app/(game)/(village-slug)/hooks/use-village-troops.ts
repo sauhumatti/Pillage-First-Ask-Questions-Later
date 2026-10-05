@@ -1,76 +1,238 @@
-import {
-  useMutation,
-  useQueryClient,
-  useSuspenseQuery,
-} from '@tanstack/react-query';
-import { use } from 'react';
-import { z } from 'zod';
+import { useMutation, useSuspenseQuery } from '@tanstack/react-query';
+import { use, useCallback } from 'react';
 import type {
+  CatapultTarget,
   GameEvent,
+  HeroOasisAnimalAction,
+  ScoutingTarget,
   TroopMovementEventType,
 } from '@pillage-first/types/models/game-event';
-import { troopSchema } from '@pillage-first/types/models/troop';
+import type { Unit } from '@pillage-first/types/models/unit';
 import type { Village } from '@pillage-first/types/models/village';
-import {
-  eventsCacheKey,
-  playerTroopsCacheKey,
-} from 'app/(game)/(village-slug)/constants/query-keys';
 import { useCurrentVillage } from 'app/(game)/(village-slug)/hooks/current-village/use-current-village';
-import { ApiContext } from 'app/(game)/providers/api-provider';
+import {
+  effectsCacheKey,
+  sentReinforcementsCacheKey,
+  troopMovementsCacheKey,
+  villageTroopsCacheKey,
+  villageUnitCountCacheKey,
+} from 'app/(game)/constants/query-keys';
+import { ApiContext } from 'app/(game)/providers/api-context';
+import { invalidateQueries } from 'app/utils/react-query';
+
+export type SendTroopsEventType = Exclude<
+  TroopMovementEventType,
+  'troopMovementReturn' | 'troopMovementAdventure'
+>;
 
 type SendTroopsArgs = {
-  type: TroopMovementEventType;
+  villageId?: Village['id'];
+  originTileId?: Village['tileId'];
+  type: SendTroopsEventType;
   troops: GameEvent<'troopMovementReinforcements'>['troops'];
-  targetId: GameEvent<'troopMovementReinforcements'>['targetId'];
+  targetTileId: Village['tileId'];
+  scoutingTarget?: ScoutingTarget;
+  catapultTargets?: CatapultTarget[];
+  heroOasisAnimalAction?: HeroOasisAnimalAction;
 };
 
+type RelocateReinforcementsArgs = {
+  sourceTileId: number;
+  troops: {
+    unitId: Unit['id'];
+    amount: number;
+  }[];
+};
+
+type ReturnSentReinforcementsArgs = {
+  stationedTileId: number;
+  troops: {
+    unitId: Unit['id'];
+    amount: number;
+  }[];
+};
+
+type RelocateSentReinforcementsArgs = ReturnSentReinforcementsArgs;
+
 export const useVillageTroops = () => {
-  const { fetcher } = use(ApiContext);
+  const { apiClient } = use(ApiContext);
   const { currentVillage } = useCurrentVillage();
-  const queryClient = useQueryClient();
 
   const { data: villageTroops } = useSuspenseQuery({
-    queryKey: [playerTroopsCacheKey, currentVillage.tileId],
+    queryKey: [villageTroopsCacheKey, currentVillage.tileId],
     queryFn: async () => {
-      const { data } = await fetcher(`/villages/${currentVillage.id}/troops`);
+      const { data } = await apiClient.get('/tiles/:tileId/stationed-troops', {
+        path: {
+          tileId: currentVillage.tileId,
+        },
+      });
 
-      return z.array(troopSchema).parse(data);
+      return data;
     },
   });
 
-  const getDeployableTroops = (villageId: Village['id']) => {
+  const { data: sentReinforcements } = useSuspenseQuery({
+    queryKey: [sentReinforcementsCacheKey, currentVillage.tileId],
+    queryFn: async () => {
+      const { data } = await apiClient.get(
+        '/tiles/:tileId/sent-reinforcements',
+        {
+          path: {
+            tileId: currentVillage.tileId,
+          },
+        },
+      );
+
+      return data;
+    },
+  });
+
+  const getDeployableTroops = useCallback(() => {
     return villageTroops.filter(
-      ({ tileId, source }) => tileId === villageId && source === villageId,
+      ({ tileId, sourceTileId }) =>
+        tileId === currentVillage.tileId &&
+        sourceTileId === currentVillage.tileId,
     );
-  };
+  }, [villageTroops, currentVillage]);
 
   const { mutate: sendTroops } = useMutation({
-    mutationFn: async ({ targetId, type, troops }: SendTroopsArgs) => {
-      await fetcher('/events', {
-        method: 'POST',
+    mutationFn: async ({
+      targetTileId,
+      type,
+      troops,
+      villageId,
+      originTileId,
+      scoutingTarget,
+      catapultTargets,
+      heroOasisAnimalAction,
+    }: SendTroopsArgs) => {
+      await apiClient.post('/events', {
         body: {
-          villageId: currentVillage.id,
+          villageId: villageId ?? currentVillage.id,
+          originTileId: originTileId ?? currentVillage.tileId,
           type,
-          targetId,
+          targetTileId,
+          troops,
+          scoutingTarget,
+          catapultTargets,
+          heroOasisAnimalAction,
+        },
+      });
+    },
+    onSuccess: async (_data, _vars, _onMutateResult, context) => {
+      await invalidateQueries(context, [
+        [villageTroopsCacheKey, currentVillage.tileId],
+        [villageUnitCountCacheKey, currentVillage.id],
+        [troopMovementsCacheKey, currentVillage.tileId],
+      ]);
+    },
+  });
+
+  const { mutate: relocateReinforcements } = useMutation({
+    mutationFn: async ({
+      sourceTileId,
+      troops,
+    }: RelocateReinforcementsArgs) => {
+      await apiClient.post('/tiles/:tileId/relocate-reinforcements', {
+        path: {
+          tileId: currentVillage.tileId,
+        },
+        body: {
+          sourceTileId,
           troops,
         },
       });
     },
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: [playerTroopsCacheKey, currentVillage.tileId],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: [eventsCacheKey, 'troopMovement', currentVillage.id],
-        }),
+    onSuccess: async (_data, _vars, _onMutateResult, context) => {
+      await invalidateQueries(context, [
+        [villageTroopsCacheKey, currentVillage.tileId],
+        [villageUnitCountCacheKey, currentVillage.id],
+        [effectsCacheKey, currentVillage.tileId],
+      ]);
+    },
+  });
+
+  const { mutate: returnReinforcements } = useMutation({
+    mutationFn: async ({
+      sourceTileId,
+      troops,
+    }: RelocateReinforcementsArgs) => {
+      await apiClient.post('/tiles/:tileId/return-reinforcements', {
+        path: {
+          tileId: currentVillage.tileId,
+        },
+        body: {
+          sourceTileId,
+          troops,
+        },
+      });
+    },
+    onSuccess: async (_data, _vars, _onMutateResult, context) => {
+      await invalidateQueries(context, [
+        [villageTroopsCacheKey, currentVillage.tileId],
+        [villageUnitCountCacheKey, currentVillage.id],
+        [troopMovementsCacheKey, currentVillage.tileId],
+        [effectsCacheKey, currentVillage.tileId],
+      ]);
+    },
+  });
+
+  const { mutate: returnSentReinforcements } = useMutation({
+    mutationFn: async ({
+      stationedTileId,
+      troops,
+    }: ReturnSentReinforcementsArgs) => {
+      await apiClient.post('/tiles/:tileId/return-sent-reinforcements', {
+        path: {
+          tileId: currentVillage.tileId,
+        },
+        body: {
+          stationedTileId,
+          troops,
+        },
+      });
+    },
+    onSuccess: async (_data, _vars, _onMutateResult, context) => {
+      await invalidateQueries(context, [
+        [sentReinforcementsCacheKey, currentVillage.tileId],
+        [villageUnitCountCacheKey, currentVillage.id],
+        [troopMovementsCacheKey, currentVillage.tileId],
+        [effectsCacheKey, currentVillage.tileId],
+      ]);
+    },
+  });
+
+  const { mutate: relocateSentReinforcements } = useMutation({
+    mutationFn: async ({
+      stationedTileId,
+      troops,
+    }: RelocateSentReinforcementsArgs) => {
+      await apiClient.post('/tiles/:tileId/relocate-sent-reinforcements', {
+        path: {
+          tileId: currentVillage.tileId,
+        },
+        body: {
+          stationedTileId,
+          troops,
+        },
+      });
+    },
+    onSuccess: async (_data, _vars, _onMutateResult, context) => {
+      await invalidateQueries(context, [
+        [sentReinforcementsCacheKey, currentVillage.tileId],
+        [villageUnitCountCacheKey, currentVillage.id],
       ]);
     },
   });
 
   return {
     villageTroops,
+    sentReinforcements,
     sendTroops,
+    relocateReinforcements,
+    returnReinforcements,
+    relocateSentReinforcements,
+    returnSentReinforcements,
     getDeployableTroops,
   };
 };

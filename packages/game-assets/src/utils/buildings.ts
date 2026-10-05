@@ -4,11 +4,71 @@ import type {
 } from '@pillage-first/types/models/building';
 import type { BuildingField } from '@pillage-first/types/models/building-field';
 import type { Effect } from '@pillage-first/types/models/effect';
+import type { Tribe } from '@pillage-first/types/models/tribe';
 import type { Village } from '@pillage-first/types/models/village';
 import { buildingMap } from '../buildings';
 
 export const getBuildingDefinition = (buildingId: Building['id']): Building => {
   return buildingMap.get(buildingId)!;
+};
+
+export const calculateTotalPopulationForLevel = (
+  buildingId: Building['id'],
+  level: number,
+): number => {
+  const { populationCoefficient } = getBuildingDefinition(buildingId);
+
+  if (level <= 0) {
+    return 0;
+  }
+
+  if (level === 1) {
+    return populationCoefficient;
+  }
+
+  const C = 5 * populationCoefficient + 4;
+  const q = Math.trunc(C / 10);
+  const r = C - q * 10;
+
+  const n1 = r + level;
+  const K1 = Math.trunc(n1 / 10);
+  const rem1 = n1 - K1 * 10;
+  const F1 = 5 * K1 * K1 - 4 * K1 + K1 * rem1;
+
+  const n0 = r + 1;
+  const K0 = Math.trunc(n0 / 10);
+  const rem0 = n0 - K0 * 10;
+  const F0 = 5 * K0 * K0 - 4 * K0 + K0 * rem0;
+
+  const S = F1 - F0;
+
+  return populationCoefficient + (level - 1) * q + S;
+};
+
+export const calculateBuildingCostForLevel = (
+  buildingId: Building['id'],
+  level: number,
+): number[] => {
+  const { buildingCostCoefficient, baseBuildingCost } =
+    getBuildingDefinition(buildingId);
+
+  return baseBuildingCost.map(
+    (resource) =>
+      Math.ceil((resource * buildingCostCoefficient ** (level - 1)) / 5) * 5,
+  );
+};
+
+export const calculateTotalCulturePointsForLevel = (
+  buildingId: Building['id'],
+  level: number,
+): number => {
+  const { culturePointsCoefficient } = getBuildingDefinition(buildingId);
+
+  if (level === 0) {
+    return 0;
+  }
+
+  return Math.round(culturePointsCoefficient * 1.2 ** level);
 };
 
 type GetBuildingDataForLevelReturn = {
@@ -102,10 +162,11 @@ export type CalculatedCumulativeEffect = {
 export const calculateBuildingEffectValues = (
   building: Building,
   level: number,
+  tribe: Tribe,
 ): CalculatedCumulativeEffect[] => {
   const result: CalculatedCumulativeEffect[] = [];
 
-  for (const effect of building.effects) {
+  for (const effect of building.effects(tribe)) {
     const { effectId, valuesPerLevel } = effect;
 
     const currentLevelValue = valuesPerLevel[level];
@@ -128,72 +189,19 @@ export const calculateBuildingEffectValues = (
   return result;
 };
 
-export const calculateBuildingCostForLevel = (
-  buildingId: Building['id'],
-  level: number,
-): number[] => {
-  const { buildingCostCoefficient, baseBuildingCost } =
-    getBuildingDefinition(buildingId);
-
-  return baseBuildingCost.map(
-    (resource) =>
-      Math.ceil((resource * buildingCostCoefficient ** (level - 1)) / 5) * 5,
-  );
-};
-
 export const calculateBuildingCancellationRefundForLevel = (
   buildingId: Building['id'],
   level: number,
+  completionPercentage = 0,
 ): number[] => {
   const buildingCost = calculateBuildingCostForLevel(buildingId, level);
 
-  return buildingCost.map((cost) => Math.trunc(cost * 0.8));
-};
+  const refundPercentage =
+    completionPercentage <= 0.05
+      ? 0.95
+      : Math.max(0.4, 0.95 - (completionPercentage - 0.05) / (1 - 0.05));
 
-export const calculateTotalCulturePointsForLevel = (
-  buildingId: Building['id'],
-  level: number,
-): number => {
-  const { culturePointsCoefficient } = getBuildingDefinition(buildingId);
-
-  if (level === 0) {
-    return 0;
-  }
-
-  return Math.round(culturePointsCoefficient * 1.2 ** level);
-};
-
-export const calculateTotalPopulationForLevel = (
-  buildingId: Building['id'],
-  level: number,
-): number => {
-  const { populationCoefficient } = getBuildingDefinition(buildingId);
-
-  if (level <= 0) {
-    return 0;
-  }
-
-  if (level === 1) {
-    return populationCoefficient;
-  }
-
-  const C = 5 * populationCoefficient + 4;
-  const q = Math.trunc(C / 10);
-  const r = C - q * 10;
-
-  const n1 = r + level;
-  const K1 = Math.trunc(n1 / 10);
-  const rem1 = n1 - K1 * 10;
-  const F1 = 5 * K1 * K1 - 4 * K1 + K1 * rem1;
-
-  const n0 = r + 1;
-  const K0 = Math.trunc(n0 / 10);
-  const rem0 = n0 - K0 * 10;
-  const F0 = 5 * K0 * K0 - 4 * K0 + K0 * rem0;
-
-  const S = F1 - F0;
-
-  return populationCoefficient + (level - 1) * q + S;
+  return buildingCost.map((cost) => Math.trunc(cost * refundPercentage));
 };
 
 // export const calculatePopulationDifferenceForLevel = (
@@ -228,4 +236,11 @@ export const calculateBuildingDurationForLevel = (
     5 *
     1000
   );
+};
+
+export const calculateBuildingDestructionDuration = (
+  levelDifference: number,
+  speed: number,
+): number => {
+  return (5 * 60 * 1000 * levelDifference) / speed;
 };

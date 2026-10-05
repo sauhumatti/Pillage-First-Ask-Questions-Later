@@ -10,6 +10,7 @@
     "ignoreUnknown": true,
     "includes": ["**"]
   },
+  "plugins": ["./plugins/biome/no-reduce.grit"],
   "assist": {
     "actions": {
       "source": {
@@ -18,7 +19,12 @@
           "options": {
             "groups": [
               ":NODE:",
-              [":PACKAGE:", "!@pillage-first/**", "!@react-router/**", "!app/**"],
+              [
+                ":PACKAGE:",
+                "!@pillage-first/**",
+                "!@react-router/**",
+                "!app/**"
+              ],
               "@pillage-first/**",
               "@react-router/**",
               "app/**",
@@ -63,10 +69,33 @@
         "noUnusedTemplateLiteral": "error",
         "useNumberNamespace": "error",
         "noInferrableTypes": "error",
-        "noUselessElse": "error"
+        "noUselessElse": "error",
+        "noRestrictedImports": {
+          "level": "error",
+          "options": {
+            "patterns": [
+              {
+                "group": ["**/*.ts", "**/*.tsx", "*.ts", "*.tsx"],
+                "message": "Do not use .ts/.tsx extensions in imports."
+              }
+            ]
+          }
+        }
       }
     }
   },
+  "overrides": [
+    {
+      "includes": ["**/vite.config.ts", "plugins/**/*.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": "off"
+          }
+        }
+      }
+    }
+  ],
   "javascript": {
     "formatter": {
       "jsxQuoteStyle": "double",

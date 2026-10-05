@@ -1,11 +1,16 @@
-import { describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
   calculateDistanceBetweenPoints,
+  randomInt,
   roundTo5,
   roundToNDecimalPoints,
 } from '../math';
 
 describe('math utils', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   describe(calculateDistanceBetweenPoints, () => {
     test('should calculate distance between two points', () => {
       const p1 = { x: 0, y: 0 };
@@ -17,7 +22,7 @@ describe('math utils', () => {
       const p1 = { x: -1, y: -1 };
       const p2 = { x: 2, y: 2 };
       // sqrt((2 - -1)^2 + (2 - -1)^2) = sqrt(3^2 + 3^2) = sqrt(18) ≈ 4.24264
-      expect(calculateDistanceBetweenPoints(p1, p2)).toBeCloseTo(4.242_64);
+      expect(calculateDistanceBetweenPoints(p1, p2)).toBeCloseTo(4.24264);
     });
   });
 
@@ -40,6 +45,14 @@ describe('math utils', () => {
       expect(roundTo5(7)).toBe(5);
       expect(roundTo5(8)).toBe(10);
       expect(roundTo5(12.5)).toBe(15);
+    });
+  });
+
+  describe(randomInt, () => {
+    test('should return an inclusive integer in the requested range', () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.99);
+
+      expect(randomInt(2, 20)).toBe(20);
     });
   });
 });

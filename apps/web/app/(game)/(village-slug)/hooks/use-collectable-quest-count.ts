@@ -1,24 +1,25 @@
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { use } from 'react';
-import { z } from 'zod';
-import { collectableQuestCountCacheKey } from 'app/(game)/(village-slug)/constants/query-keys';
 import { useCurrentVillage } from 'app/(game)/(village-slug)/hooks/current-village/use-current-village';
-import { ApiContext } from 'app/(game)/providers/api-provider';
-
-const getCollectableQuestCountSchema = z.strictObject({
-  collectableQuestCount: z.number(),
-});
+import { collectableQuestCountCacheKey } from 'app/(game)/constants/query-keys';
+import { ApiContext } from 'app/(game)/providers/api-context';
 
 export const useCollectableQuestCount = () => {
-  const { fetcher } = use(ApiContext);
+  const { apiClient } = use(ApiContext);
   const { currentVillage } = useCurrentVillage();
 
   const { data: collectableQuestCount } = useSuspenseQuery({
     queryKey: [collectableQuestCountCacheKey, currentVillage.id],
     queryFn: async () => {
-      const { data } = await fetcher<
-        z.infer<typeof getCollectableQuestCountSchema>
-      >(`/villages/${currentVillage.id}/quests/collectables/count`);
+      const { data } = await apiClient.get(
+        '/villages/:villageId/quests/collectables/count',
+        {
+          path: {
+            villageId: currentVillage.id,
+          },
+        },
+      );
+
       return data.collectableQuestCount;
     },
   });

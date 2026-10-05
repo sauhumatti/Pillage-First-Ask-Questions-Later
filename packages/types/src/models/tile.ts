@@ -17,6 +17,12 @@ export const tileTypeSchema = z
   .enum(['free', 'oasis'])
   .meta({ id: 'TileType' });
 
+// 1 = 25%, 2 = 25% + 25%, 3 = 50%, null = no oasis bonus.
+export const oasisBonusTypeSchema = z
+  .union([z.literal(1), z.literal(2), z.literal(3)])
+  .nullable()
+  .meta({ id: 'OasisBonusType' });
+
 export const baseTileSchema = z
   .strictObject({
     id: z.number(),
@@ -33,11 +39,6 @@ const baseOccupiableTileSchema = baseTileSchema
     attributes: z.strictObject({
       resourceFieldComposition: resourceFieldCompositionSchema,
     }),
-    item: z
-      .strictObject({
-        id: z.number(),
-      })
-      .nullable(),
   })
   .meta({ id: 'BaseOccupiableTile' });
 
@@ -60,7 +61,7 @@ const baseOasisTileSchema = baseTileSchema
     type: z.literal('oasis'),
     attributes: z.strictObject({
       oasisGraphics: z.number(),
-      isOccupiable: z.boolean(),
+      bonusType: oasisBonusTypeSchema,
     }),
   })
   .meta({ id: 'BaseOasisTile' });
@@ -86,6 +87,7 @@ export const tileSchema = z
 export const occupiableTileSchema = z
   .union([occupiedOccupiableTileSchema, unoccupiedOccupiableTileSchema])
   .meta({ id: 'OccupiableTile' });
+
 export const oasisTileSchema = z
   .union([occupiedOasisTileSchema, unoccupiedOasisTileSchema])
   .meta({ id: 'OasisTile' });
@@ -98,5 +100,6 @@ export type OccupiableTile = z.infer<typeof occupiableTileSchema>;
 export type OccupiedOasisTile = z.infer<typeof occupiedOasisTileSchema>;
 export type UnoccupiedOasisTile = z.infer<typeof unoccupiedOasisTileSchema>;
 export type OasisTile = z.infer<typeof oasisTileSchema>;
+export type OasisBonusType = z.infer<typeof oasisBonusTypeSchema>;
 
 export type Tile = z.infer<typeof tileSchema>;

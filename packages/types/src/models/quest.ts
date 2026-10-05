@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { Building } from './building';
-import type { Unit } from './unit';
+import type { NatureUnitId, Unit } from './unit';
 
 export type ResourceQuestReward = {
   type: 'resources';
@@ -36,13 +36,13 @@ export type AdventureCountQuestRequirement = {
   count: number;
 };
 
-export type TroopCountQuestRequirement = {
-  type: 'troop-count';
+export type QueuedTroopCountQuestRequirement = {
+  type: 'queued-troop-count';
   count: number;
 };
 
-export type UnitTroopCountQuestRequirement = {
-  type: 'unit-troop-count';
+export type QueuedTroopCountByIdQuestRequirement = {
+  type: 'queued-troop-count-by-id';
   count: number;
 };
 
@@ -56,13 +56,32 @@ export type UnitKillCountQuestRequirement = {
   count: number;
 };
 
+export type CaptureAnimalCountByIdQuestRequirement = {
+  type: 'capture-animal-count-by-id';
+  unitId: NatureUnitId;
+  count: number;
+};
+
+export type CaptureAnimalKindCountQuestRequirement = {
+  type: 'capture-animal-kind-count';
+  count: number;
+};
+
+export type GatheredResourceCountQuestRequirement = {
+  type: 'gathered-resource-count';
+  count: number;
+};
+
 export type QuestRequirement =
   | BuildingQuestRequirement
   | AdventureCountQuestRequirement
   | KillCountQuestRequirement
   | UnitKillCountQuestRequirement
-  | TroopCountQuestRequirement
-  | UnitTroopCountQuestRequirement;
+  | CaptureAnimalCountByIdQuestRequirement
+  | CaptureAnimalKindCountQuestRequirement
+  | GatheredResourceCountQuestRequirement
+  | QueuedTroopCountQuestRequirement
+  | QueuedTroopCountByIdQuestRequirement;
 
 type VillageQuestId =
   | `${Matcher}-${Building['id']}-${number}`
@@ -70,10 +89,17 @@ type VillageQuestId =
 
 type GlobalQuestId =
   | `adventureCount-${number}`
-  | `troopCount-${number}`
-  | `unitTroopCount-${Unit['id']}-${number}`
+  | `queuedTroopCount-${number}`
+  | `queuedTroopCountById-${Unit['id']}-${number}`
   | `killCount-${number}`
-  | `unitKillCount-${Unit['id']}-${number}`;
+  | `unitKillCount-${Unit['id']}-${number}`
+  | `captureAnimalCountById-${NatureUnitId}-${number}`
+  | `captureAnimalKindCount-${number}`
+  | `gatheredResourceCount-${number}`;
+
+export type QuestId = VillageQuestId | GlobalQuestId;
+
+export const questIdSchema = z.string() as unknown as z.ZodType<QuestId>;
 
 const baseQuestSchema = z.strictObject({
   id: z.string(),

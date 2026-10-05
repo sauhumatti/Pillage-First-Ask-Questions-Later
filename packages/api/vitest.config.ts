@@ -5,6 +5,9 @@ const vitestConfig: ViteUserConfig = defineConfig({
     root: './',
     watch: false,
     reporters: ['default'],
+    pool: 'threads',
+    isolate: false,
+    fsModuleCache: true,
     globalSetup: '../db/src/testing/global-setup.ts',
   },
 });

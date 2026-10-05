@@ -1,9 +1,10 @@
 import { useMutation, useSuspenseQuery } from '@tanstack/react-query';
 import { use } from 'react';
 import type { Bookmarks } from '@pillage-first/types/models/bookmark';
-import { bookmarksCacheKey } from 'app/(game)/(village-slug)/constants/query-keys';
 import { useCurrentVillage } from 'app/(game)/(village-slug)/hooks/current-village/use-current-village';
-import { ApiContext } from 'app/(game)/providers/api-provider';
+import { bookmarksCacheKey } from 'app/(game)/constants/query-keys';
+import { ApiContext } from 'app/(game)/providers/api-context';
+import { invalidateQueries } from 'app/utils/react-query';
 
 type UpdateBookmarksArgs = {
   buildingId: keyof Bookmarks;
@@ -11,15 +12,18 @@ type UpdateBookmarksArgs = {
 };
 
 export const useBookmarks = () => {
-  const { fetcher } = use(ApiContext);
+  const { apiClient } = use(ApiContext);
   const { currentVillage } = useCurrentVillage();
 
   const { data: bookmarks } = useSuspenseQuery({
-    queryKey: [bookmarksCacheKey],
+    queryKey: [bookmarksCacheKey, currentVillage.id],
     queryFn: async () => {
-      const { data } = await fetcher<Bookmarks>(
-        `/villages/${currentVillage.id}/bookmarks`,
-      );
+      const { data } = await apiClient.get('/villages/:villageId/bookmarks', {
+        path: {
+          villageId: currentVillage.id,
+        },
+      });
+
       return data;
     },
     staleTime: Number.POSITIVE_INFINITY,
@@ -31,15 +35,20 @@ export const useBookmarks = () => {
     UpdateBookmarksArgs
   >({
     mutationFn: async ({ buildingId, tab }) => {
-      await fetcher(`/villages/${currentVillage.id}/bookmarks/${buildingId}`, {
-        method: 'PATCH',
+      await apiClient.patch('/villages/:villageId/bookmarks/:buildingId', {
+        path: {
+          villageId: currentVillage.id,
+          buildingId,
+        },
         body: {
           tab,
         },
       });
     },
     onSuccess: async (_data, _vars, _onMutateResult, context) => {
-      await context.client.invalidateQueries({ queryKey: [bookmarksCacheKey] });
+      await invalidateQueries(context, [
+        [bookmarksCacheKey, currentVillage.id],
+      ]);
     },
   });
 

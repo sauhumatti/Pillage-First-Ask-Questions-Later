@@ -152,6 +152,17 @@ describe('calculateBattle', () => {
     expect(result.attackerLossRatio).toBe(1);
   });
 
+  test('a lone hero is exempt from the lone attacker rule', () => {
+    const result = calculateBattle({
+      attackers: [{ ...unit(80, 80, 80, 1), isHero: true }],
+      defenders: [],
+      isRaid: true,
+      flatDefence: BASIC_VILLAGE_DEFENCE,
+    });
+
+    expect(result.attackerLossRatio).toBeLessThan(1);
+  });
+
   test('a lone strong attacker survives an empty village', () => {
     const result = calculateBattle({
       attackers: [haeduans(1)],

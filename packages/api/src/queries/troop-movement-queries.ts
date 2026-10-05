@@ -302,3 +302,17 @@ export const selectHasHeroHealthRegenerationEventQuery = `
     WHERE type = 'heroHealthRegeneration'
   );
 `;
+
+export const selectHeroCombatStatsByPlayerIdQuery = `
+  SELECT
+    h.base_attack_power AS fightingStrength,
+    h.attack_bonus AS attackBonus,
+    h.defence_bonus AS defenceBonus,
+    EXISTS (
+      SELECT 1
+      FROM hero_equipped_items hei
+      WHERE hei.hero_id = h.id AND hei.slot = 'horse'
+    ) AS isMounted
+  FROM heroes h
+  WHERE h.player_id = $player_id;
+`;

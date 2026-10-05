@@ -2232,7 +2232,9 @@ describe('offensive movement combat', () => {
       { unitId: 'PHALANX', amount: 1 },
     ]);
 
-    database.exec({ sql: 'UPDATE heroes SET health = 100;' });
+    database.exec({
+      sql: 'UPDATE heroes SET health = 100, base_attack_power = 100;',
+    });
 
     raidMovementResolver(
       database,

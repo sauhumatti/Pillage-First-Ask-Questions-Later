@@ -45,6 +45,9 @@
     "./loot-tables": {
       "default": "./src/loot-tables.ts"
     },
+    "./utils/combat": {
+      "default": "./src/utils/combat.ts"
+    },
     "./utils/troops": {
       "default": "./src/utils/troops.ts"
     },

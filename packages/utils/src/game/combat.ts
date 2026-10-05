@@ -6,6 +6,8 @@ export type CombatUnit = {
   cavalryDefence: number;
   isCavalry: boolean;
   amount: number;
+  // Heroes lose health instead of dying, so the lone attacker rule doesn't apply to them
+  isHero?: boolean;
 };
 
 export type CalculateBattleArgs = {
@@ -129,7 +131,15 @@ export const calculateBattle = ({
   let attackerLossRatio = hasAttackerWon ? winnerLossRatio : loserLossRatio;
   const defenderLossRatio = hasAttackerWon ? loserLossRatio : winnerLossRatio;
 
-  if (attackerUnitCount === 1 && rawOffence < LONE_ATTACKER_OFFENCE_THRESHOLD) {
+  const isLoneHero = attackers.some(
+    ({ isHero, amount }) => isHero && amount > 0,
+  );
+
+  if (
+    attackerUnitCount === 1 &&
+    !isLoneHero &&
+    rawOffence < LONE_ATTACKER_OFFENCE_THRESHOLD
+  ) {
     attackerLossRatio = 1;
   }
 

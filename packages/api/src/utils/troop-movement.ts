@@ -1,6 +1,11 @@
 import { z } from 'zod';
 import { PLAYER_ID } from '@pillage-first/game-assets/player';
 import {
+  calculateHeroBonusMultiplier,
+  createCombatUnit,
+  createHeroCombatUnit,
+} from '@pillage-first/game-assets/utils/combat';
+import {
   calculateLootableCarryCapacity,
   calculateTotalCarryCapacity,
   distributeLoot,
@@ -17,7 +22,6 @@ import {
   type CalculateBattleReturn,
   type CombatUnit,
   calculateBattle,
-  calculateSmithyImprovedValue,
   calculateUnitLosses,
 } from '@pillage-first/utils/game/combat';
 import {
@@ -28,6 +32,7 @@ import {
   selectBattleReportParticipantsByTargetTileIdQuery,
   selectCombatTroopsByTileIdQuery,
   selectHasHeroHealthRegenerationEventQuery,
+  selectHeroCombatStatsByPlayerIdQuery,
   selectHeroHealthByPlayerIdQuery,
   selectUnitImprovementLevelsByPlayerIdsQuery,
   updateHeroHealthByPlayerIdQuery,
@@ -220,29 +225,34 @@ const selectSmithyLevels = (
   );
 };
 
-const toCombatUnit = (
-  unitId: UnitId,
-  amount: number,
-  smithyLevel: number,
-): CombatUnit => {
-  const {
-    attack,
-    infantryDefence,
-    cavalryDefence,
-    unitWheatConsumption,
-    category,
-  } = getUnitDefinition(unitId);
+type HeroCombatStats = {
+  fightingStrength: number;
+  // Stored in tenths of a percent, 2 per bonus point
+  attackBonus: number;
+  defenceBonus: number;
+  isMounted: boolean;
+};
 
-  const improve = (value: number) =>
-    calculateSmithyImprovedValue(value, unitWheatConsumption, smithyLevel);
+const selectHeroCombatStats = (
+  database: DbFacade,
+  playerId: number | null,
+): HeroCombatStats | null => {
+  if (playerId === null) {
+    return null;
+  }
 
-  return {
-    attack: improve(attack),
-    infantryDefence: improve(infantryDefence),
-    cavalryDefence: improve(cavalryDefence),
-    isCavalry: category === 'cavalry',
-    amount,
-  };
+  return (
+    database.selectObject({
+      sql: selectHeroCombatStatsByPlayerIdQuery,
+      bind: { $player_id: playerId },
+      schema: z.strictObject({
+        fightingStrength: z.number(),
+        attackBonus: z.number(),
+        defenceBonus: z.number(),
+        isMounted: z.coerce.boolean(),
+      }),
+    }) ?? null
+  );
 };
 
 const selectVillageEffectBreakdown = (
@@ -429,16 +439,42 @@ export const resolveOffensiveMovement = (
     targetTileId,
   );
 
+  const attackingHero = troops.some(({ unitId }) => unitId === 'HERO')
+    ? selectHeroCombatStats(database, attackerPlayerId)
+    : null;
+  const defendingHeroOwnerId =
+    stationedTroops.find(({ unitId }) => unitId === 'HERO')?.playerId ?? null;
+  const defendingHero = selectHeroCombatStats(database, defendingHeroOwnerId);
+
+  const toCombatUnit = (
+    unitId: UnitId,
+    amount: number,
+    playerId: number | null,
+    hero: HeroCombatStats | null,
+  ): CombatUnit[] => {
+    if (unitId === 'HERO') {
+      return hero
+        ? [createHeroCombatUnit(hero.fightingStrength, hero.isMounted)]
+        : [];
+    }
+
+    return [createCombatUnit(unitId, amount, getSmithyLevel(playerId, unitId))];
+  };
+
   const battle: CalculateBattleReturn = calculateBattle({
-    attackers: troops.map(({ unitId, amount }) =>
-      toCombatUnit(unitId, amount, getSmithyLevel(attackerPlayerId, unitId)),
+    attackers: troops.flatMap(({ unitId, amount }) =>
+      toCombatUnit(unitId, amount, attackerPlayerId, attackingHero),
     ),
-    defenders: stationedTroops.map(({ unitId, amount, playerId }) =>
-      toCombatUnit(unitId, amount, getSmithyLevel(playerId, unitId)),
+    defenders: stationedTroops.flatMap(({ unitId, amount, playerId }) =>
+      toCombatUnit(unitId, amount, playerId, defendingHero),
     ),
     isRaid,
-    attackMultiplier,
-    defenceMultiplier,
+    attackMultiplier:
+      attackMultiplier *
+      calculateHeroBonusMultiplier((attackingHero?.attackBonus ?? 0) / 2),
+    defenceMultiplier:
+      defenceMultiplier *
+      calculateHeroBonusMultiplier((defendingHero?.defenceBonus ?? 0) / 2),
     flatDefence,
   });
 

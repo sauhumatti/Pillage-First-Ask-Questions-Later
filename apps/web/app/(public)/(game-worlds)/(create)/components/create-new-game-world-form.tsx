@@ -46,6 +46,7 @@ import {
 import { Slider } from 'app/components/ui/slider';
 import { pushGameWorldCreated } from 'app/instrumentation/product-events';
 import { reportError } from 'app/instrumentation/report-error';
+import { createServerGameWorld, isGameServerMode } from 'app/utils/game-server';
 import { invalidateQueries } from 'app/utils/react-query';
 
 const createServerFormSchema = z.strictObject({
@@ -129,6 +130,13 @@ export const CreateNewGameWorldForm = () => {
     isSuccess,
   } = useMutation<number, Error, MutateArgs>({
     mutationFn: async ({ server }) => {
+      if (isGameServerMode) {
+        const startedAt = performance.now();
+        await createServerGameWorld(server);
+        setCurrentStepIndex(steps.length);
+        return performance.now() - startedAt;
+      }
+
       return new Promise<number>((resolve, reject) => {
         const worker = new Worker(CreateNewGameWorldWorker, { type: 'module' });
         const channel = new MessageChannel();
@@ -228,7 +236,10 @@ export const CreateNewGameWorldForm = () => {
   });
 
   const onSubmit = async (values: CreateServerFormValues) => {
-    const isStorageUnavailable = await checkStorageQuota();
+    // Game server worlds don't use the browser's storage
+    const isStorageUnavailable = isGameServerMode
+      ? false
+      : await checkStorageQuota();
 
     if (isStorageUnavailable) {
       return;

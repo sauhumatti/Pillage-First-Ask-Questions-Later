@@ -8,11 +8,22 @@ import {
   isDatabaseInitializationErrorNotificationMessageEvent,
   isDatabaseInitializationSuccessNotificationMessageEvent,
 } from 'app/(game)/providers/guards/api-notification-event-guards';
+import {
+  createWorkerFetcher,
+  type Fetcher,
+} from 'app/(game)/providers/utils/worker-fetch';
+import {
+  gameServerFetch,
+  gameServerJson,
+  isGameServerMode,
+} from 'app/utils/game-server';
 
 type WorkerNotificationListener = (event: MessageEvent) => void;
 
 export type ApiWorkerHandle = {
-  apiWorker: Worker;
+  // null when the game runs on the game server
+  apiWorker: Worker | null;
+  fetcher: Fetcher;
   closeApiWorker: () => Promise<void>;
   subscribeToApiWorkerNotifications: (
     listener: WorkerNotificationListener,
@@ -82,6 +93,7 @@ const createApiWorkerHandle = (
 
   return {
     apiWorker: worker,
+    fetcher: createWorkerFetcher(worker),
     closeApiWorker,
     subscribeToApiWorkerNotifications,
   };
@@ -133,6 +145,49 @@ const createWorkerWithReadySignal = (
   });
 };
 
+// Talks to a game world running on the game server: requests over HTTP, notifications over server-sent events
+const createGameServerHandle = async (
+  serverSlug: Server['slug'],
+): Promise<ApiWorkerHandle> => {
+  await gameServerFetch(`worlds/${serverSlug}/open`, { method: 'POST' });
+
+  const notifications = new EventTarget();
+  const eventSource = new EventSource(`/api/worlds/${serverSlug}/events`);
+
+  eventSource.addEventListener('message', (event) => {
+    notifications.dispatchEvent(
+      new MessageEvent('message', { data: JSON.parse(event.data) }),
+    );
+  });
+
+  const fetcher = (async (url, init) => {
+    return gameServerJson(`worlds/${serverSlug}/request`, {
+      method: 'POST',
+      body: JSON.stringify({
+        url,
+        method: init?.method ?? 'GET',
+        body: init?.body ?? null,
+      }),
+    });
+  }) as Fetcher;
+
+  return {
+    apiWorker: null,
+    fetcher,
+    closeApiWorker: async () => {
+      eventSource.close();
+      apiWorkerHandles.delete(serverSlug);
+    },
+    subscribeToApiWorkerNotifications: (listener) => {
+      notifications.addEventListener('message', listener as EventListener);
+
+      return () => {
+        notifications.removeEventListener('message', listener as EventListener);
+      };
+    },
+  };
+};
+
 export const getApiWorkerHandle = (
   serverSlug: Server['slug'],
 ): Promise<ApiWorkerHandle> => {
@@ -142,7 +197,11 @@ export const getApiWorkerHandle = (
     return existingHandle;
   }
 
-  const handle = createWorkerWithReadySignal(serverSlug).catch((error) => {
+  const handle = (
+    isGameServerMode
+      ? createGameServerHandle(serverSlug)
+      : createWorkerWithReadySignal(serverSlug)
+  ).catch((error) => {
     apiWorkerHandles.delete(serverSlug);
     throw error;
   });

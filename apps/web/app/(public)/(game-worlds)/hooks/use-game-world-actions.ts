@@ -19,6 +19,13 @@ import {
   pushGameWorldExported,
 } from 'app/instrumentation/product-events';
 import { reportError } from 'app/instrumentation/report-error';
+import {
+  deleteServerGameWorld,
+  exportServerGameWorld,
+  importServerGameWorld,
+  isGameServerMode,
+  listServerGameWorlds,
+} from 'app/utils/game-server';
 import { invalidateQueries } from 'app/utils/react-query';
 import { workerFactory } from 'app/utils/workers';
 
@@ -108,6 +115,10 @@ const reportMissingServerDatabaseIfNeeded = async (
 };
 
 const exportServerDatabase = async (server: Server): Promise<ArrayBuffer> => {
+  if (isGameServerMode) {
+    return exportServerGameWorld(server.slug);
+  }
+
   const url = new URL(ExportServerWorker, import.meta.url);
   url.searchParams.set('server-slug', server.slug);
 
@@ -129,6 +140,10 @@ const exportServerDatabase = async (server: Server): Promise<ArrayBuffer> => {
 const importGameWorldDatabase = async (
   databaseBuffer: ArrayBuffer,
 ): Promise<Server> => {
+  if (isGameServerMode) {
+    return importServerGameWorld(databaseBuffer);
+  }
+
   const payload: ImportGameWorldWorkerPayload = {
     databaseBuffer,
   };
@@ -173,6 +188,11 @@ const deleteServerData = async (
   return removeAvailableServer(server);
 };
 
+const deleteGameWorldOnServer = async (server: Server): Promise<Server[]> => {
+  await deleteServerGameWorld(server.slug);
+  return listServerGameWorlds();
+};
+
 export const useGameWorldActions = () => {
   const { mutateAsync: createGameWorld } = useMutation<
     void,
@@ -180,7 +200,10 @@ export const useGameWorldActions = () => {
     { server: Server }
   >({
     mutationFn: async ({ server }) => {
-      addAvailableServer(server);
+      // The game server keeps its own list of game worlds
+      if (!isGameServerMode) {
+        addAvailableServer(server);
+      }
     },
     onSuccess: async (_data, _vars, _onMutateResult, context) => {
       await invalidateQueries(context, [[availableServerCacheKey]]);
@@ -234,7 +257,9 @@ export const useGameWorldActions = () => {
       return importGameWorldDatabase(databaseBuffer);
     },
     onSuccess: async (duplicatedServer, _vars, _onMutateResult, context) => {
-      addAvailableServer(duplicatedServer);
+      if (!isGameServerMode) {
+        addAvailableServer(duplicatedServer);
+      }
       pushGameWorldDuplicated(duplicatedServer);
       await invalidateQueries(context, [[availableServerCacheKey]]);
       toast.success('Game world duplicated');
@@ -259,6 +284,10 @@ export const useGameWorldActions = () => {
     { server: Server }
   >({
     mutationFn: async ({ server }) => {
+      if (isGameServerMode) {
+        return deleteGameWorldOnServer(server);
+      }
+
       const rootHandle = await getRootHandle();
       return deleteServerData(rootHandle, server);
     },
@@ -280,6 +309,10 @@ export const useGameWorldActions = () => {
   const { mutateAsync: deleteGameWorld, isPending: isDeleteGameWorldPending } =
     useMutation<Server[] | null, Error, { server: Server }>({
       mutationFn: async ({ server }) => {
+        if (isGameServerMode) {
+          return deleteGameWorldOnServer(server);
+        }
+
         const rootHandle = await getRootHandle();
         await reportMissingServerDatabaseIfNeeded(rootHandle, server);
 

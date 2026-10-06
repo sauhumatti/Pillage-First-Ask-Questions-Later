@@ -1,0 +1,9 @@
+{
+  "$schema": "https://www.schemastore.org/tsconfig.json",
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ESNext", "DOM"],
+    "types": ["node", "vite/client"]
+  },
+  "include": ["src/**/*", "vite.config.ts", "vitest.config.ts"]
+}

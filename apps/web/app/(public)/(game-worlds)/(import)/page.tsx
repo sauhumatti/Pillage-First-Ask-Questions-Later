@@ -26,6 +26,7 @@ import {
   type GameWorldImportMethod,
   pushGameWorldImported,
 } from 'app/instrumentation/product-events';
+import { importServerGameWorld, isGameServerMode } from 'app/utils/game-server';
 import { invalidateQueries } from 'app/utils/react-query';
 import { workerFactory } from 'app/utils/workers';
 
@@ -53,6 +54,11 @@ const ImportGameWorld = () => {
     error,
   } = useMutation<ImportGameWorldSuccess, Error, ImportGameWorldArgs>({
     mutationFn: async ({ data }) => {
+      if (isGameServerMode) {
+        const server = await importServerGameWorld(data);
+        return { resolved: true as const, server };
+      }
+
       const buffer = data instanceof Blob ? await data.arrayBuffer() : data;
       const payload: ImportGameWorldWorkerPayload = {
         databaseBuffer: buffer as ArrayBuffer,

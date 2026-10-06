@@ -1,0 +1,17 @@
+# Pillage First! game server. Set GAME_PASSWORD before starting:
+#   GAME_PASSWORD=your-password docker compose up -d --build
+services:
+  pillage-first:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      GAME_PASSWORD: ${GAME_PASSWORD:?Set GAME_PASSWORD to protect your game worlds}
+    volumes:
+      - pillage-first-data:/data
+    # Gives game worlds time to save when the container stops
+    stop_grace_period: 30s
+
+volumes:
+  pillage-first-data:

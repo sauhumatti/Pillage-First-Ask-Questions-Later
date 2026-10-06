@@ -1,9 +1,15 @@
 import type { RouterContextProvider } from 'react-router';
+import { isGameServerMode, listServerGameWorlds } from 'app/utils/game-server';
 
 export const isGameWorldLocked = async (
   context: Readonly<RouterContextProvider>,
   serverSlug: string,
 ): Promise<boolean> => {
+  // On the game server a world can be open on several devices and tabs at once
+  if (isGameServerMode) {
+    return false;
+  }
+
   const { sessionContext } = await import('app/context/session');
 
   const { sessionId } = context.get(sessionContext);
@@ -30,6 +36,15 @@ export const isGameWorldLocked = async (
 export const doesGameWorldExist = async (
   serverSlug: string,
 ): Promise<boolean> => {
+  if (isGameServerMode) {
+    try {
+      const worlds = await listServerGameWorlds();
+      return worlds.some(({ slug }) => slug === serverSlug);
+    } catch {
+      return false;
+    }
+  }
+
   try {
     const root = await navigator.storage.getDirectory();
     const rootHandle = await root.getDirectoryHandle(

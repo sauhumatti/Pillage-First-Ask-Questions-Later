@@ -2,7 +2,7 @@ import { createContext } from 'react';
 import type { ApiClient } from 'app/(game)/providers/utils/typed-api-client';
 
 export type ApiContextReturn = {
-  apiWorker: Worker;
+  apiWorker: Worker | null;
   apiClient: ApiClient;
 };
 

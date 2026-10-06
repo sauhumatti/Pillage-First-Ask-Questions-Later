@@ -1,0 +1,9 @@
+.git
+**/node_modules
+**/build
+**/dist
+**/.turbo
+**/.e2e
+**/.shots
+data
+apps/web/public/graphic-packs

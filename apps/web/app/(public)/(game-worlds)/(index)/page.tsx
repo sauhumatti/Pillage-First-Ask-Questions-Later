@@ -15,6 +15,7 @@ import {
   BreadcrumbSeparator,
 } from 'app/components/ui/breadcrumb';
 import { Button } from 'app/components/ui/button';
+import { isGameServerMode } from 'app/utils/game-server';
 
 const MyGameWorldsPage = () => {
   const { t } = useTranslation('public');
@@ -48,9 +49,9 @@ const MyGameWorldsPage = () => {
             {t('Your game worlds')}
           </Text>
           <Text>
-            Your current game worlds are listed below. To prevent data
-            corruptions, each game world may only be opened in a single browser
-            window or tab simultaneously.
+            {isGameServerMode
+              ? 'Your current game worlds are listed below. They are saved on your game server, so you can continue playing from any device.'
+              : 'Your current game worlds are listed below. To prevent data corruptions, each game world may only be opened in a single browser window or tab simultaneously.'}
           </Text>
 
           <div className="flex flex-col gap-2">

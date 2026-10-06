@@ -1,0 +1,37 @@
+{
+  "$schema": "https://www.schemastore.org/package.json",
+  "name": "@pillage-first/server",
+  "private": true,
+  "type": "module",
+  "license": "AGPL-3.0-or-later",
+  "author": "Jure Rotar <hello@jurerotar.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jurerotar/Pillage-First-Ask-Questions-Later",
+    "directory": "apps/server"
+  },
+  "scripts": {
+    "build": "vite build",
+    "start": "node build/main.js",
+    "lint:check": "biome lint --no-errors-on-unmatched",
+    "lint": "biome lint --fix --no-errors-on-unmatched",
+    "format:check": "biome ci --linter-enabled=false",
+    "format": "biome check --write --no-errors-on-unmatched",
+    "type-check": "tsc",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@pillage-first/api": "*",
+    "@pillage-first/db": "*",
+    "@pillage-first/types": "*",
+    "@pillage-first/utils": "*",
+    "@sqlite.org/sqlite-wasm": "3.53.4-build1",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "25.9.1",
+    "typescript": "7.0.2",
+    "vite": "8.3.0",
+    "vitest": "5.0.1"
+  }
+}

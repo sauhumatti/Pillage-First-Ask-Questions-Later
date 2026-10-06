@@ -34,7 +34,8 @@
         "FARO_API_KEY",
         "FARO_STACK_ID",
         "FARO_SOURCEMAP_API_URL",
-        "VITE_FARO_INGEST_ENDPOINT"
+        "VITE_FARO_INGEST_ENDPOINT",
+        "VITE_GAME_SERVER"
       ]
     },
     "preview": {
@@ -53,7 +54,8 @@
         "FARO_API_KEY",
         "FARO_STACK_ID",
         "FARO_SOURCEMAP_API_URL",
-        "VITE_FARO_INGEST_ENDPOINT"
+        "VITE_FARO_INGEST_ENDPOINT",
+        "VITE_GAME_SERVER"
       ]
     },
     "format:check": {},

@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { PLAYER_ID } from '@pillage-first/game-assets/player';
 import { calculateHealthRegenerationEventDuration } from '@pillage-first/game-assets/utils/hero';
 import { getItemDefinition } from '@pillage-first/game-assets/utils/items';
 import type { ResourceProductionEffectId } from '@pillage-first/types/models/effect';
@@ -22,6 +21,7 @@ import {
   updateHeroInventoryItemAmountByHeroIdAndItemIdQuery,
   updateHeroVillageByCurrentVillageQuery,
 } from '../queries/hero-queries';
+import { getActingPlayerId } from '../simulation/actor';
 import { createEvents } from './create-event';
 import { getVillageTileId, updateResourceSiteResourcesAt } from './village';
 
@@ -225,7 +225,7 @@ export const addHeroExperience = (
     `,
     bind: {
       $experience: experience,
-      $player_id: PLAYER_ID,
+      $player_id: getActingPlayerId(),
     },
   });
 };
@@ -233,7 +233,7 @@ export const addHeroExperience = (
 export const onHeroDeath = (database: DbFacade, timestamp: number) => {
   const villageId = database.selectValue({
     sql: 'SELECT village_id FROM heroes WHERE player_id = $player_id;',
-    bind: { $player_id: PLAYER_ID },
+    bind: { $player_id: getActingPlayerId() },
     schema: z.number(),
   })!;
 
@@ -245,7 +245,7 @@ export const onHeroDeath = (database: DbFacade, timestamp: number) => {
 
   database.exec({
     sql: deleteHeroEffectsQuery,
-    bind: { $player_id: PLAYER_ID },
+    bind: { $player_id: getActingPlayerId() },
   });
 
   database.exec({

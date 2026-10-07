@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { PLAYER_ID } from '@pillage-first/game-assets/player';
 import {
   CULTURE_POINTS_CELEBRATION_LIMITS,
   type CulturePointsCelebrationType,
@@ -9,6 +8,7 @@ import {
 } from '@pillage-first/game-assets/utils/culture-points';
 import { buildingIdSchema } from '@pillage-first/types/models/building';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
+import { getActingPlayerId } from '../simulation/actor';
 
 const DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000;
 
@@ -63,7 +63,7 @@ export const calculateVillageCulturePointsProduction = (
 
 export const calculatePlayerCulturePointsProduction = (
   database: DbFacade,
-  playerId = PLAYER_ID,
+  playerId = getActingPlayerId(),
 ): number => {
   const rows = database.selectObjects({
     sql: `
@@ -94,7 +94,7 @@ export const calculatePlayerCulturePointsProduction = (
 export const updatePlayerCulturePointsAt = (
   database: DbFacade,
   timestamp: number,
-  playerId = PLAYER_ID,
+  playerId = getActingPlayerId(),
 ): void => {
   const production = calculatePlayerCulturePointsProduction(database, playerId);
 
@@ -122,7 +122,7 @@ export const addPlayerCulturePoints = (
   database: DbFacade,
   culturePoints: number,
   timestamp: number,
-  playerId = PLAYER_ID,
+  playerId = getActingPlayerId(),
 ): void => {
   updatePlayerCulturePointsAt(database, timestamp, playerId);
 
@@ -159,7 +159,7 @@ export const calculateCulturePointsCelebrationReward = (
 
 export const getPlayerCulturePointsRequirementContext = (
   database: DbFacade,
-  playerId = PLAYER_ID,
+  playerId = getActingPlayerId(),
 ) => {
   const { villageCount, culturePointsRequirementSpeed } = database.selectObject(
     {

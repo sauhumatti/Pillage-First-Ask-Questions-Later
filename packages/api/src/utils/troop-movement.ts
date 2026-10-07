@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { PLAYER_ID } from '@pillage-first/game-assets/player';
 import {
   calculateHeroBonusMultiplier,
   createCombatUnit,
@@ -57,6 +56,7 @@ import {
   selectUnitImprovementLevelsByPlayerIdsQuery,
   updateHeroHealthByPlayerIdQuery,
 } from '../queries/troop-movement-queries';
+import { getActingPlayerId } from '../simulation/actor';
 import { canConquerVillage, conquerVillage } from './conquest';
 import {
   createHeroHealthRegenerationEventByVillageId,
@@ -669,7 +669,7 @@ export const resolveOffensiveMovement = (
     targetTileId,
   );
 
-  const attackerPlayerId = attacker.playerId ?? PLAYER_ID;
+  const attackerPlayerId = attacker.playerId ?? getActingPlayerId();
 
   const stationedTroops = database.selectObjects({
     sql: selectCombatTroopsByTileIdQuery,

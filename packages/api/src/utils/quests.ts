@@ -1,13 +1,16 @@
-import { PLAYER_ID } from '@pillage-first/game-assets/player';
 import { getHunterLodgeCatchableAnimals } from '@pillage-first/game-assets/utils/hunters-lodge';
 import type { Building } from '@pillage-first/types/models/building';
 import type { NatureUnitId, Unit } from '@pillage-first/types/models/unit';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
+import { getActingPlayerId } from '../simulation/actor';
 
 export const assessAdventureCountQuestCompletion = (
   database: DbFacade,
   timestamp: number,
 ): void => {
+  if (getActingPlayerId() !== 1) {
+    return;
+  }
   database.exec({
     sql: `
       UPDATE quests
@@ -33,7 +36,7 @@ export const assessAdventureCountQuestCompletion = (
     `,
     bind: {
       $completed_at: timestamp,
-      $player_id: PLAYER_ID,
+      $player_id: getActingPlayerId(),
     },
   });
 };
@@ -42,6 +45,9 @@ export const assessQueuedTroopCountQuestCompletion = (
   database: DbFacade,
   timestamp: number,
 ): void => {
+  if (getActingPlayerId() !== 1) {
+    return;
+  }
   database.exec({
     sql: `
       UPDATE quests
@@ -76,7 +82,7 @@ export const assessQueuedTroopCountQuestCompletion = (
     `,
     bind: {
       $completed_at: timestamp,
-      $player_id: PLAYER_ID,
+      $player_id: getActingPlayerId(),
     },
   });
 };
@@ -86,6 +92,9 @@ export const assessQueuedTroopCountByIdQuestCompletion = (
   unitId: Unit['id'],
   timestamp: number,
 ): void => {
+  if (getActingPlayerId() !== 1) {
+    return;
+  }
   database.exec({
     sql: `
       UPDATE quests
@@ -124,7 +133,7 @@ export const assessQueuedTroopCountByIdQuestCompletion = (
     bind: {
       $completed_at: timestamp,
       $unit_id: unitId,
-      $player_id: PLAYER_ID,
+      $player_id: getActingPlayerId(),
     },
   });
 };
@@ -134,6 +143,9 @@ export const assessCaptureAnimalCountByIdQuestCompletion = (
   unitId: NatureUnitId,
   timestamp: number,
 ): void => {
+  if (getActingPlayerId() !== 1) {
+    return;
+  }
   database.exec({
     sql: `
       UPDATE quests
@@ -162,7 +174,7 @@ export const assessCaptureAnimalCountByIdQuestCompletion = (
     bind: {
       $completed_at: timestamp,
       $unit_id: unitId,
-      $player_id: PLAYER_ID,
+      $player_id: getActingPlayerId(),
     },
   });
 };
@@ -171,6 +183,9 @@ export const assessCaptureAnimalKindCountQuestCompletion = (
   database: DbFacade,
   timestamp: number,
 ): void => {
+  if (getActingPlayerId() !== 1) {
+    return;
+  }
   database.exec({
     sql: `
       UPDATE quests
@@ -207,7 +222,7 @@ export const assessCaptureAnimalKindCountQuestCompletion = (
     `,
     bind: {
       $completed_at: timestamp,
-      $player_id: PLAYER_ID,
+      $player_id: getActingPlayerId(),
       $unit_ids: JSON.stringify(getHunterLodgeCatchableAnimals(5)),
     },
   });
@@ -217,6 +232,9 @@ export const assessGatheredResourceCountQuestCompletion = (
   database: DbFacade,
   timestamp: number,
 ): void => {
+  if (getActingPlayerId() !== 1) {
+    return;
+  }
   database.exec({
     sql: `
       UPDATE quests
@@ -249,7 +267,7 @@ export const assessGatheredResourceCountQuestCompletion = (
     `,
     bind: {
       $completed_at: timestamp,
-      $player_id: PLAYER_ID,
+      $player_id: getActingPlayerId(),
     },
   });
 };
@@ -261,6 +279,9 @@ export const assessBuildingQuestCompletion = (
   level: number,
   timestamp: number,
 ): void => {
+  if (getActingPlayerId() !== 1) {
+    return;
+  }
   const oneOfQuestId = `oneOf-${buildingId}-${level}`;
   const everyQuestId = `every-${buildingId}-${level}`;
 

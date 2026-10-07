@@ -11,6 +11,7 @@ import {
   selectCollectableQuestCountQuery,
   selectVillageQuestsQuery,
 } from '../../queries/quest-queries';
+import { getGameTime } from '../../simulation/game-clock';
 import { addHeroExperience } from '../../utils/hero';
 import {
   addResourceSiteResourcesAt,
@@ -83,7 +84,7 @@ export const collectQuest = createController(
   database.exec({
     sql: collectQuestQuery,
     bind: {
-      $collected_at: Date.now(),
+      $collected_at: getGameTime(database),
       $quest_id: questId,
       $village_id: villageId,
     },
@@ -98,7 +99,7 @@ export const collectQuest = createController(
       addResourceSiteResourcesAt(
         database,
         getVillageTileId(database, villageId),
-        Date.now(),
+        getGameTime(database),
         [amount, amount, amount, amount],
       );
       continue;

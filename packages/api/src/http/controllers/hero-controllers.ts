@@ -9,6 +9,7 @@ import { heroResourceToProduceSchema } from '@pillage-first/types/models/hero';
 import { heroAdventuresSchema } from '@pillage-first/types/models/hero-adventures';
 import { heroLoadoutSlotSchema } from '@pillage-first/types/models/hero-loadout';
 import { tribeSchema } from '@pillage-first/types/models/tribe';
+import { getGameTime } from '../../simulation/game-clock';
 import { getPlayerHeroAdventureStateAt } from '../../utils/adventures';
 import { createEvents } from '../../utils/create-event';
 import {
@@ -131,7 +132,11 @@ export const getHeroInventory = createController(
     response: z.array(heroInventoryEntryDtoSchema),
   },
 )(({ database, path: { playerId } }) => {
-  const heroId = syncHeroAuctionState(database, playerId, Date.now());
+  const heroId = syncHeroAuctionState(
+    database,
+    playerId,
+    getGameTime(database),
+  );
 
   const rows = database.selectObjects({
     sql: `
@@ -163,7 +168,7 @@ export const getHeroAdventures = createController(
   },
 )(({ database }) => {
   const { available, completed, nextAvailableAt } =
-    getPlayerHeroAdventureStateAt(database, Date.now());
+    getPlayerHeroAdventureStateAt(database, getGameTime(database));
 
   return heroAdventuresSchema.parse({
     available,
@@ -320,7 +325,7 @@ export const changeHeroAttributes = createController(
       updateResourceSiteResourcesAt(
         database,
         getVillageTileId(database, villageId),
-        Date.now(),
+        getGameTime(database),
       );
 
       database.exec({
@@ -419,7 +424,7 @@ export const changeHeroResourceToProduce = createController(
     updateResourceSiteResourcesAt(
       database,
       getVillageTileId(database, villageId),
-      Date.now(),
+      getGameTime(database),
     );
 
     updateHeroResourceProductionEffects({
@@ -735,7 +740,7 @@ export const useHeroItem = createController(
       updateResourceSiteResourcesAt(
         database,
         getVillageTileId(database, villageId),
-        Date.now(),
+        getGameTime(database),
       );
 
       database.exec({

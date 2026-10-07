@@ -503,4 +503,45 @@ export const effectsSeeder = (database: DbFacade, server: Server): void => {
     ],
     effectsToInsert,
   );
+  if (server.configuration.mapSize === 50) {
+    // Tribal merchant effects must be local when several playable tribes coexist.
+    database.exec({
+      sql: `DELETE FROM effects WHERE source_id = (SELECT id FROM effect_source_ids WHERE source = 'tribe');`,
+    });
+    const villages = database.selectObjects({
+      sql: 'SELECT v.tile_id AS tileId, ti.tribe FROM villages v JOIN players p ON p.id = v.player_id JOIN tribe_ids ti ON ti.id = p.tribe_id;',
+      schema: z.object({ tileId: z.number(), tribe: z.string() }),
+    });
+    for (const village of villages) {
+      const merchant = merchants.find((m) => m.tribe === village.tribe)!;
+      for (const [effect, value, source] of [
+        ['merchantCapacity', merchant.merchantCapacity, 'tribe'],
+        ['merchantSpeed', merchant.merchantSpeed, 'tribe'],
+        ...(village.tileId === initialPlayerVillageTileId
+          ? []
+          : [
+              'woodProduction',
+              'clayProduction',
+              'ironProduction',
+              'wheatProduction',
+            ].map((effect) => [
+              effect,
+              village.tribe === 'egyptians' ? 48 : 36,
+              'hero',
+            ])),
+      ]) {
+        database.exec({
+          sql: `INSERT INTO effects (effect_id, value, type_id, scope_id, source_id, tile_id, source_specifier)
+          VALUES ((SELECT id FROM effect_ids WHERE effect = $effect), $value, (SELECT id FROM effect_type_ids WHERE type = 'base'),
+          (SELECT id FROM effect_scope_ids WHERE scope = 'local'), (SELECT id FROM effect_source_ids WHERE source = $source), $tile, 0);`,
+          bind: {
+            $effect: effect,
+            $value: value,
+            $source: source,
+            $tile: village.tileId,
+          },
+        });
+      }
+    }
+  }
 };

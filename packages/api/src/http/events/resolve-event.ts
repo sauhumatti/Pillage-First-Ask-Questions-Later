@@ -1,9 +1,11 @@
+import { z } from 'zod';
 import type { EventApiNotificationEvent } from '@pillage-first/types/api-events';
 import type {
   GameEvent,
   GameEventType,
 } from '@pillage-first/types/models/game-event';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
+import { withActingPlayer } from '../../simulation/actor';
 import {
   baseEventRowSchema,
   mapEventRowToTypedEvent,
@@ -103,9 +105,22 @@ export const resolveEvent = (
 
   try {
     const resolver = gameEventResolvers[event.type];
-    const { affectedVillageIds, affectedTileIds = [] } = (
-      resolver as (db: DbFacade, ev: GameEvent) => ResolverResult
-    )(database, event);
+    const actorId =
+      event.villageId == null
+        ? 1
+        : (database.selectValue({
+            sql: 'SELECT player_id FROM villages WHERE id = $id;',
+            bind: { $id: event.villageId },
+            schema: z.number(),
+          }) ?? 1);
+    const { affectedVillageIds, affectedTileIds = [] } = withActingPlayer(
+      actorId,
+      () =>
+        (resolver as (db: DbFacade, ev: GameEvent) => ResolverResult)(
+          database,
+          event,
+        ),
+    );
 
     postWorkerMessage({
       eventKey: 'event:success',

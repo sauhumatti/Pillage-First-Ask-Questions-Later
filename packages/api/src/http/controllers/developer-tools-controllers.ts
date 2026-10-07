@@ -4,6 +4,7 @@ import { calculateHeroLevel } from '@pillage-first/game-assets/utils/hero';
 import { developerSettingsSchema } from '@pillage-first/types/models/developer-settings';
 import type { GameEventType } from '@pillage-first/types/models/game-event';
 import { resourceSchema } from '@pillage-first/types/models/resource';
+import { getGameTime } from '../../simulation/game-clock';
 import { materializeHeroAdventurePointsAt } from '../../utils/adventures';
 import { onHeroDeath } from '../../utils/hero';
 import { adjustLoyalty, createLoyaltyIncreaseEvent } from '../../utils/loyalty';
@@ -133,7 +134,7 @@ export const updateDeveloperSettings = createController(
             type IN (${eventTypes.map((t) => `'${t}'`).join(', ')})
         `,
         bind: {
-          $now: Date.now(),
+          $now: getGameTime(database),
         },
       });
 
@@ -229,7 +230,7 @@ export const updateVillageResources = createController(
 )(({ database, body, path: { villageId } }) => {
   const { resource, amount, direction } = body;
 
-  const now = Date.now();
+  const now = getGameTime(database);
 
   const resources = [0, 0, 0, 0];
   const resourceIndexMap = {
@@ -262,7 +263,7 @@ export const incrementHeroAdventurePoints = createController(
     },
   },
 )(({ database, path: { heroId } }) => {
-  const now = Date.now();
+  const now = getGameTime(database);
 
   materializeHeroAdventurePointsAt(database, heroId, now);
 
@@ -311,7 +312,7 @@ export const killHero = createController(
     throw new Error('Hero must be at home to be killed');
   }
 
-  const now = Date.now();
+  const now = getGameTime(database);
 
   database.exec({
     sql: `

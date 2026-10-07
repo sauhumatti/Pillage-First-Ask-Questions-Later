@@ -384,7 +384,7 @@ const OasisTileModalAnimalsSkeleton = () => {
 
 const OasisTileModal = ({
   tile,
-  onAttackOrRaid: _onAttackOrRaid,
+  onAttackOrRaid,
   onReinforceVillage,
 }: OasisTileModalProps) => {
   const { t } = useTranslation();
@@ -393,7 +393,7 @@ const OasisTileModal = ({
 
   const isOccupiable = isOccupiableOasisTile(tile);
   const isOccupied = isOccupiedOasisTile(tile);
-  const _canAttackOrRaid =
+  const canAttackOrRaid =
     isOccupiable && (!isOccupied || tile.owner.id !== PLAYER_ID);
 
   const title = (() => {
@@ -471,17 +471,17 @@ const OasisTileModal = ({
           )}
         </div>
       )}
-      {/*{canAttackOrRaid && (*/}
-      {/*  <div className="flex flex-col gap-2">*/}
-      {/*    <Text as="h3">{t('Actions')}</Text>*/}
-      {/*    <Button*/}
-      {/*      variant="textLink"*/}
-      {/*      onClick={() => onAttackOrRaid(tile)}*/}
-      {/*    >*/}
-      {/*      {t('Raid oasis')}*/}
-      {/*    </Button>*/}
-      {/*  </div>*/}
-      {/*)}*/}
+      {canAttackOrRaid && (
+        <div className="flex flex-col gap-2">
+          <Text as="h3">{t('Actions')}</Text>
+          <Button
+            variant="textLink"
+            onClick={() => onAttackOrRaid(tile)}
+          >
+            {t('Raid oasis')}
+          </Button>
+        </div>
+      )}
     </DialogHeader>
   );
 };
@@ -644,7 +644,7 @@ const SendResourcesAction = ({
 
 const OccupiedOccupiableTileModal = ({
   tile,
-  onAttackOrRaid: _onAttackOrRaid,
+  onAttackOrRaid,
   onReinforceVillage,
   onSendResources,
 }: OccupiedOccupiableTileModalProps) => {
@@ -657,7 +657,6 @@ const OccupiedOccupiableTileModal = ({
   const { name: villageName, slug: villageSlug } = ownerVillage;
 
   const isOwnedByPlayer = playerId === PLAYER_ID;
-  const isNpcVillage = owner.faction !== 'player';
 
   return (
     <>
@@ -676,18 +675,13 @@ const OccupiedOccupiableTileModal = ({
       <TileModalPlayerInfo tile={tile} />
       <div className="flex flex-col gap-2">
         <Text as="h3">{t('Actions')}</Text>
-        {/*{!isOwnedByPlayer && (*/}
-        {/*  <Button*/}
-        {/*    variant="textLink"*/}
-        {/*    onClick={() => onAttackOrRaid(tile)}*/}
-        {/*  >*/}
-        {/*    {t('Attack or raid')}*/}
-        {/*  </Button>*/}
-        {/*)}*/}
-        {!isOwnedByPlayer && isNpcVillage && (
-          <Text className="text-gray-500">
-            {t('Attacking and raiding is still in development')}
-          </Text>
+        {!isOwnedByPlayer && (
+          <Button
+            variant="textLink"
+            onClick={() => onAttackOrRaid(tile)}
+          >
+            {t('Attack or raid')}
+          </Button>
         )}
         {isOwnedByPlayer && (
           <Text variant="link">

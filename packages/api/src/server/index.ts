@@ -7,6 +7,8 @@ export {
 } from '../http/events/scheduler/scheduler';
 export { createSchedulerDataSource } from '../http/events/scheduler/scheduler-data-source';
 export { matchRoute } from '../http/route-matcher';
+export { getGameTime, saveGameClock } from '../simulation/game-clock';
+export { startSimulation } from '../simulation/runtime';
 export { createTroopStarvationEvent } from '../utils/starvation';
 export {
   setNotificationPort,

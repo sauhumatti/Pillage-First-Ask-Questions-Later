@@ -1,11 +1,12 @@
 import { z } from 'zod';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
 import { selectTileLoyaltyQuery } from '../queries/loyalty-queries';
+import { getGameTime } from '../simulation/game-clock';
 import { createEvents } from './create-event';
 
 export const createLoyaltyIncreaseEvent = (
   database: DbFacade,
-  startsAt = Date.now(),
+  startsAt = getGameTime(database),
 ) => {
   const hasPendingLoyaltyIncreaseEvent = database.selectValue({
     sql: `
@@ -21,7 +22,7 @@ export const createLoyaltyIncreaseEvent = (
           ) AS event_exists;
     `,
     bind: {
-      $now: Date.now(),
+      $now: getGameTime(database),
     },
     schema: z.coerce.boolean(),
   });

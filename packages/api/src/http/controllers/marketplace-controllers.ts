@@ -4,6 +4,7 @@ import {
   deleteTradeRouteByTileIdQuery,
   updateTradeRouteQuery,
 } from '../../queries/marketplace-queries';
+import { getGameTime } from '../../simulation/game-clock';
 import { createEvents } from '../../utils/create-event';
 import { validateEventCreationPrerequisites } from '../../utils/events';
 import {
@@ -22,8 +23,8 @@ const HOUR_IN_MILLISECONDS = 60 * 60 * 1000;
 
 type TradeRouteBody = z.infer<typeof createTradeRouteBodySchema>;
 
-const getNextTradeRouteStartsAt = (startHour: number) => {
-  const now = Date.now();
+const getNextTradeRouteStartsAt = (database: DbFacade, startHour: number) => {
+  const now = getGameTime(database);
   const startsAt = new Date(now);
   startsAt.setMinutes(0, 0, 0);
   startsAt.setHours(startHour);
@@ -51,7 +52,7 @@ const getTradeRoute = (
   }
 
   return {
-    startsAt: getNextTradeRouteStartsAt(startHour),
+    startsAt: getNextTradeRouteStartsAt(database, startHour),
     event: {
       type: 'tradeRoute',
       villageId: village.id,

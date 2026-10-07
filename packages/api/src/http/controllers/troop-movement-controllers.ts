@@ -11,6 +11,7 @@ import {
   selectTroopMovementsByTileIdQuery,
 } from '../../queries/event-queries';
 import { selectVillageIdByTileIdQuery } from '../../queries/village-queries';
+import { getGameTime } from '../../simulation/game-clock';
 import { createEvents } from '../../utils/create-event';
 import { validateTroopMovement as validateTroopMovementLogic } from '../../utils/troops';
 import {
@@ -137,7 +138,7 @@ export const cancelTroopMovement = createController(
     const { troops, targetTileId, originTileId, villageId, type } =
       movementEvent;
 
-    const now = Date.now();
+    const now = getGameTime(database);
     const duration = now - movementEvent.startsAt;
 
     if (duration > 60_000) {

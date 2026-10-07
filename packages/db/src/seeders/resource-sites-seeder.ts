@@ -63,7 +63,8 @@ export const resourceSitesSeeder = (
   });
 
   for (const { id, x, y } of villages) {
-    const isStartingVillage = x === 0 && y === 0;
+    const isStartingVillage =
+      server.configuration.mapSize === 50 || (x === 0 && y === 0);
 
     if (isStartingVillage) {
       results.push([id, 750, 750, 750, 750, updatedAt]);

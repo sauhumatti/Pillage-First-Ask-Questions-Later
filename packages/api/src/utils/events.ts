@@ -1,6 +1,5 @@
 import type { SqlValue } from '@sqlite.org/sqlite-wasm';
 import { z } from 'zod';
-import { PLAYER_ID } from '@pillage-first/game-assets/player';
 import {
   calculateBuildingCostForLevel,
   calculateBuildingDestructionDuration,
@@ -100,6 +99,8 @@ import {
   selectVillageBuildingLevelQuery,
   selectVillageTileIdQuery,
 } from '../queries/village-queries';
+import { getActingPlayerId } from '../simulation/actor';
+import { getGameTime } from '../simulation/game-clock';
 import {
   calculateAdventureDuration,
   getPlayerHeroAdventureStateAt,
@@ -206,6 +207,16 @@ export const validateEventCreationPrerequisites = (
   database: DbFacade,
   event: GameEvent,
 ): void => {
+  if (
+    'buildingId' in event &&
+    (event.buildingId === 'EMBASSY' || event.buildingId === 'TREASURY') &&
+    database.selectValue({
+      sql: 'SELECT map_size FROM servers LIMIT 1;',
+      schema: z.number(),
+    }) === 50
+  ) {
+    throw new Error('This building is unavailable in single-player worlds');
+  }
   if (isUnitImprovementEvent(event)) {
     const { villageId, level } = event;
 
@@ -397,7 +408,7 @@ export const validateEventCreationPrerequisites = (
         throw new Error('Only infantry and cavalry can be healed');
       }
 
-      materializeWoundedTroopsAt(database, villageId, Date.now());
+      materializeWoundedTroopsAt(database, villageId, getGameTime(database));
 
       const woundedAmount = selectWoundedTroopAmount(
         database,
@@ -827,7 +838,7 @@ export const validateEventCreationPrerequisites = (
   if (isHeroRevivalEvent(event)) {
     const isHeroAlive = database.selectValue({
       sql: 'SELECT health > 0 FROM heroes WHERE player_id = $player_id;',
-      bind: { $player_id: PLAYER_ID },
+      bind: { $player_id: getActingPlayerId() },
       schema: z.coerce.boolean(),
     });
 
@@ -841,7 +852,7 @@ export const validateEventCreationPrerequisites = (
   if (isAdventureTroopMovementEvent(event)) {
     const { available: adventurePoints } = getPlayerHeroAdventureStateAt(
       database,
-      Date.now(),
+      getGameTime(database),
     );
 
     if (adventurePoints === 0) {
@@ -867,7 +878,7 @@ export const validateEventCreationPrerequisites = (
               AND t.amount > 0
           ) AS is_hero_home;
       `,
-      bind: { $player_id: PLAYER_ID },
+      bind: { $player_id: getActingPlayerId() },
       schema: z.coerce.boolean(),
     });
 
@@ -1064,12 +1075,12 @@ export const runEventCreationSideEffects = (
     const heroId = database.selectValue({
       sql: 'SELECT id FROM heroes WHERE player_id = $player_id',
       bind: {
-        $player_id: PLAYER_ID,
+        $player_id: getActingPlayerId(),
       },
       schema: z.number(),
     })!;
 
-    const now = Date.now();
+    const now = getGameTime(database);
     const { available } = materializeHeroAdventurePointsAt(
       database,
       heroId,
@@ -1110,7 +1121,7 @@ export const runEventCreationSideEffects = (
   }
 
   if (isTroopTrainingEvent(event)) {
-    const now = Date.now();
+    const now = getGameTime(database);
 
     if (isHealingTroopTrainingBuilding(event.buildingId)) {
       materializeWoundedTroopsAt(database, event.villageId, now);
@@ -1270,7 +1281,7 @@ export const getEventCost = (
         WHERE
           h.player_id = $player_id;
       `,
-      bind: { $player_id: PLAYER_ID },
+      bind: { $player_id: getActingPlayerId() },
       schema: z.strictObject({
         experience: z.number(),
         tribe: playableTribeSchema,
@@ -1671,7 +1682,7 @@ export const getEventDuration = (
         WHERE
           h.player_id = $player_id;
       `,
-      bind: { $player_id: PLAYER_ID },
+      bind: { $player_id: getActingPlayerId() },
       schema: z.strictObject({
         experience: z.number(),
         speed: speedSchema,
@@ -1685,7 +1696,7 @@ export const getEventDuration = (
   if (isHeroHealthRegenerationEvent(event)) {
     const { healthRegeneration, speed } = database.selectObject({
       sql: 'SELECT health_regeneration AS healthRegeneration, servers.speed FROM heroes CROSS JOIN servers WHERE player_id = $player_id;',
-      bind: { $player_id: PLAYER_ID },
+      bind: { $player_id: getActingPlayerId() },
       schema: z.strictObject({
         healthRegeneration: z.number(),
         speed: speedSchema,
@@ -1710,7 +1721,7 @@ export const getEventDuration = (
 
     const loyaltyIncreaseDuration =
       calculateLoyaltyIncreaseEventDuration(speed);
-    const elapsedSinceServerStart = Date.now() - createdAt;
+    const elapsedSinceServerStart = getGameTime(database) - createdAt;
     const timeUntilNextIncrease =
       (loyaltyIncreaseDuration -
         (elapsedSinceServerStart % loyaltyIncreaseDuration)) %
@@ -1750,7 +1761,7 @@ export const getEventDuration = (
 };
 
 export const getEventResourceSubtractionTimestamp = (
-  _database: DbFacade,
+  database: DbFacade,
   event: GameEvent,
   startsAt: number,
 ) => {
@@ -1758,7 +1769,7 @@ export const getEventResourceSubtractionTimestamp = (
     return startsAt;
   }
 
-  return Date.now();
+  return getGameTime(database);
 };
 
 // WARNING: `event` does not include `startsAt` and `duration` at this point in the flow!
@@ -1790,12 +1801,12 @@ export const getEventStartTime = (
       return lastEvent.startsAt + lastEvent.duration;
     }
 
-    return Date.now();
+    return getGameTime(database);
   }
 
   if (isAnimalCageProductionEvent(event)) {
     const { villageId } = event;
-    const now = Date.now();
+    const now = getGameTime(database);
 
     return database.selectValue({
       sql: `
@@ -1816,7 +1827,7 @@ export const getEventStartTime = (
 
   if (isTrapperCageProductionEvent(event)) {
     const { villageId } = event;
-    const now = Date.now();
+    const now = getGameTime(database);
 
     return database.selectValue({
       sql: `
@@ -1838,7 +1849,7 @@ export const getEventStartTime = (
   if (isUnitImprovementEvent(event)) {
     const { unitId } = event;
 
-    const now = Date.now();
+    const now = getGameTime(database);
 
     const lastResolvesAtForThisUnitId = database.selectValue({
       sql: `
@@ -1866,17 +1877,17 @@ export const getEventStartTime = (
   }
 
   if (isBuildingConstructionEvent(event)) {
-    return Date.now();
+    return getGameTime(database);
   }
 
   if (isBuildingLevelChangeEvent(event)) {
-    return Date.now();
+    return getGameTime(database);
   }
 
   if (isTroopMovementEvent(event)) {
     if (isReturnTroopMovementEvent(event)) {
       if (isManuallyTriggeredReturnTroopMovementEvent(event)) {
-        return Date.now();
+        return getGameTime(database);
       }
 
       const { resolvesAt } = event;
@@ -1884,30 +1895,30 @@ export const getEventStartTime = (
       return resolvesAt;
     }
 
-    return Date.now();
+    return getGameTime(database);
   }
 
   if (isResourceTransferEvent(event)) {
     if (getTotalResourceAmount(event.resources) === 0) {
-      return event.resolvesAt ?? Date.now();
+      return event.resolvesAt ?? getGameTime(database);
     }
 
-    return Date.now();
+    return getGameTime(database);
   }
 
   if (isTradeRouteEvent(event)) {
-    return event.startsAt ?? Date.now();
+    return event.startsAt ?? getGameTime(database);
   }
 
   if (isCulturePointsCelebrationEvent(event)) {
     updatePlayerCulturePointsAt(
       database,
-      Date.now(),
+      getGameTime(database),
       getVillagePlayerId(database, event.villageId),
     );
 
-    return Date.now();
+    return getGameTime(database);
   }
 
-  return Date.now();
+  return getGameTime(database);
 };

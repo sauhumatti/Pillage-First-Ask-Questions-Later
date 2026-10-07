@@ -10,7 +10,9 @@ import {
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
+import { aiRequestSchema } from '@pillage-first/api/ai-decision';
 import { serializeError } from '@pillage-first/utils/errors';
+import { decideWithOpenRouter } from './ai-provider';
 import { createAuth } from './auth';
 import { createStaticFileHandler } from './static-files';
 import { WorldHost } from './world-host';
@@ -205,6 +207,16 @@ const handleApi = async (
   // Blocks cross-site form posts: browsers can't add custom headers to those
   if (method !== 'GET' && request.headers['x-pillage-first'] !== '1') {
     throw new HttpError(403, 'Missing request header');
+  }
+
+  if (route === 'ai/decide' && method === 'POST') {
+    const input = await readJson(request, aiRequestSchema);
+    try {
+      sendJson(response, 200, await decideWithOpenRouter(input));
+    } catch {
+      throw new HttpError(503, 'AI service unavailable; using local decisions');
+    }
+    return;
   }
 
   const [resource, slug, action] = segments;

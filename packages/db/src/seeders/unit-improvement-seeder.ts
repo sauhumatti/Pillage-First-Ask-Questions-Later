@@ -19,6 +19,17 @@ export const unitImprovementSeeder = (
   database: DbFacade,
   server: Server,
 ): void => {
+  if (server.configuration.mapSize === 50) {
+    for (let playerId = 1; playerId <= 20; playerId += 1) {
+      // The lookup table includes every unit; unused tribal entries never affect play.
+      database.exec({
+        sql: `INSERT INTO unit_improvements (player_id, unit_id, level)
+        SELECT $player, id, 0 FROM unit_ids WHERE unit != 'HERO';`,
+        bind: { $player: playerId },
+      });
+    }
+    return;
+  }
   const unitsByTribe = getUnitsByTribe(server.playerConfiguration.tribe);
 
   const upgradableUnitIds = unitsByTribe

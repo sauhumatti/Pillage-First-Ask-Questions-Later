@@ -723,7 +723,7 @@ export const troopSeeder = (database: DbFacade, server: Server): void => {
   });
 
   for (const { tribe, tile_id, player_id, x, y } of villages) {
-    if (player_id === PLAYER_ID) {
+    if (player_id === PLAYER_ID || server.configuration.mapSize === 50) {
       const tier1UnitIt = getUnitByTribeAndTier(tribe, 'tier-1');
 
       // Player starts with 3 tier-1 units and a hero

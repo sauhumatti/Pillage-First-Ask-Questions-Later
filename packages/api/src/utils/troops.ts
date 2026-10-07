@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { PLAYER_ID } from '@pillage-first/game-assets/player';
 import type { TroopMovementEvent } from '@pillage-first/types/models/game-event';
 import { tileTypeSchema } from '@pillage-first/types/models/tile';
 import type { Troop } from '@pillage-first/types/models/troop';
@@ -15,6 +14,8 @@ import {
   isRelocationTroopMovementEvent,
   isReturnTroopMovementEvent,
 } from '@pillage-first/utils/guards/event';
+import { getActingPlayerId } from '../simulation/actor';
+import { getGameTime } from '../simulation/game-clock';
 import {
   getPlayerCulturePointsRequirementContext,
   getVillageExpansionSlots,
@@ -520,7 +521,7 @@ export const validateTroopMovement = (
         schema: z.number(),
       })!;
 
-      updatePlayerCulturePointsAt(database, Date.now(), playerId);
+      updatePlayerCulturePointsAt(database, getGameTime(database), playerId);
 
       const culturePoints = database.selectValue({
         sql: `
@@ -677,7 +678,7 @@ export const validateTroopMovement = (
       bind: {
         $target_tile_id: targetTileId,
         $village_id: villageId,
-        $player_id: PLAYER_ID,
+        $player_id: getActingPlayerId(),
       },
       schema: z.strictObject({
         tile_id: z.number(),

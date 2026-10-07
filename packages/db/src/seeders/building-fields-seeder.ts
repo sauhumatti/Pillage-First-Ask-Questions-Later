@@ -111,7 +111,7 @@ export const buildingFieldsSeeder = (
     x,
     y,
   } of villages) {
-    if (player_id === PLAYER_ID) {
+    if (player_id === PLAYER_ID || server.configuration.mapSize === 50) {
       const templateId = getTemplateId(
         'player',
         tribe,

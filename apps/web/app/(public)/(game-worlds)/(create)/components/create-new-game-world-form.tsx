@@ -59,7 +59,7 @@ const createServerFormSchema = z.strictObject({
       // fom completely breaks
       .overwrite((val) => Number.parseInt(val, 10)),
     mapSize: z
-      .enum(['100', '200'])
+      .enum(['50', '100', '200'])
       // @ts-expect-error
       .overwrite((val) => Number.parseInt(val, 10)),
     culturePointsRequirementSpeed: z.number().int().min(1).max(5),
@@ -222,7 +222,7 @@ export const CreateNewGameWorldForm = () => {
       name: '',
       configuration: {
         speed: '1',
-        mapSize: '100',
+        mapSize: '50',
         culturePointsRequirementSpeed: 1,
       },
       playerConfiguration: {
@@ -370,6 +370,9 @@ export const CreateNewGameWorldForm = () => {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
+                              <SelectItem value="50">
+                                50x50 — 20 players
+                              </SelectItem>
                               <SelectItem value="100">100x100</SelectItem>
                               <SelectItem value="200">200x200</SelectItem>
                             </SelectContent>

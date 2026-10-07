@@ -145,6 +145,49 @@ export const villageSeeder = (database: DbFacade, server: Server): void => {
     schema: z.number(),
   });
 
+  if (server.configuration.mapSize === 50) {
+    // Seed twenty comparable villages with a deterministic, spread-out layout.
+    const available = occupiableTileIds
+      .map((id) => ({ id, ...getCoordinatesByTileId(id) }))
+      .filter(({ x, y }) => Math.abs(x) <= 22 && Math.abs(y) <= 22);
+    const chosen = [{ x: 0, y: 0 }];
+    for (const playerId of playerIds) {
+      let best = 0;
+      let bestDistance = -1;
+      for (let i = 0; i < available.length; i += 1) {
+        const candidate = available[i];
+        const distance = Math.min(
+          ...chosen.map((point) =>
+            Math.hypot(point.x - candidate.x, point.y - candidate.y),
+          ),
+        );
+        if (distance > bestDistance) {
+          best = i;
+          bestDistance = distance;
+        }
+      }
+      const [tile] = available.splice(best, 1);
+      if (!tile) {
+        throw new Error('Not enough starting locations');
+      }
+      chosen.push(tile);
+      database.exec({
+        sql: 'INSERT INTO villages (name, slug, tile_id, player_id) VALUES ($name, $slug, $tile, $player);',
+        bind: {
+          $name: `New village ${playerId}`,
+          $slug: `v-${playerId}`,
+          $tile: tile.id,
+          $player: playerId,
+        },
+      });
+    }
+    // All players begin on the same resource-field composition.
+    database.exec({
+      sql: "UPDATE tiles SET resource_field_composition_id = (SELECT id FROM resource_field_composition_ids WHERE resource_field_composition = '4446') WHERE id IN (SELECT tile_id FROM villages);",
+    });
+    return;
+  }
+
   const getOccupiableFieldByIndex = (index: number): OccupiableField => {
     const id = occupiableTileIds[index];
     const { x, y } = getCoordinatesByTileId(id);

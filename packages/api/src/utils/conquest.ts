@@ -1,11 +1,11 @@
 import { z } from 'zod';
-import { PLAYER_ID } from '@pillage-first/game-assets/player';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
 import {
   insertEffectQuery,
   selectWheatProductionEffectIdQuery,
 } from '../queries/effect-queries';
 import { insertGatherersHutExpeditionByVillageIdQuery } from '../queries/troop-movement-queries';
+import { getActingPlayerId } from '../simulation/actor';
 import {
   getPlayerCulturePointsRequirementContext,
   getVillageExpansionSlots,
@@ -20,16 +20,16 @@ export const canConquerVillage = (
   attackingVillageId: number,
   timestamp: number,
 ): boolean => {
-  updatePlayerCulturePointsAt(database, timestamp, PLAYER_ID);
+  updatePlayerCulturePointsAt(database, timestamp, getActingPlayerId());
 
   const culturePoints = database.selectValue({
     sql: 'SELECT culture_points FROM players WHERE id = $player_id;',
-    bind: { $player_id: PLAYER_ID },
+    bind: { $player_id: getActingPlayerId() },
     schema: z.number(),
   })!;
 
   const { nextVillageCulturePointsRequirement } =
-    getPlayerCulturePointsRequirementContext(database, PLAYER_ID);
+    getPlayerCulturePointsRequirementContext(database, getActingPlayerId());
 
   const { totalExpansionSlots, usedExpansionSlots } = getVillageExpansionSlots(
     database,
@@ -66,7 +66,7 @@ export const conquerVillage = (
       WHERE id = $village_id;
     `,
     bind: {
-      $player_id: PLAYER_ID,
+      $player_id: getActingPlayerId(),
       $parent_village_id: attackingVillageId,
       $village_id: villageId,
     },

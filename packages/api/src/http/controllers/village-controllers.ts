@@ -19,6 +19,7 @@ import {
   updateRearrangedBuildingFieldEventsQuery,
   updateRearrangedScheduledBuildingUpgradesQuery,
 } from '../../queries/village-queries';
+import { getGameTime } from '../../simulation/game-clock';
 import {
   calculatePlayerCulturePointsProduction,
   calculateVillageCulturePointsProduction,
@@ -123,7 +124,7 @@ export const getVillageCulturePoints = createController(
     response: villageCulturePointsDtoSchema,
   },
 )(({ database, path: { villageId } }) => {
-  const now = Date.now();
+  const now = getGameTime(database);
   const playerId = getVillagePlayerId(database, villageId);
 
   updatePlayerCulturePointsAt(database, now, playerId);

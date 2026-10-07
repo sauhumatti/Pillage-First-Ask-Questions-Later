@@ -76,11 +76,15 @@ export const generateNpcPlayers = (
     Math.round((playerDensity * totalTiles + 1) / 100) * 100;
 
   // Subtract 1 player to account for player
-  const npcCount = totalPlayerCount - 1;
+  const npcCount = mapSize === 50 ? 19 : totalPlayerCount - 1;
 
   return Array.from({ length: npcCount }, (_, index) => {
     const factionId = seededRandomArrayElement(prng, npcFactionIds);
     // We do +2 because user's player always has the id of 1
-    return npcPlayerFactory({ prng, id: index + 2, factionId });
+    const player = npcPlayerFactory({ prng, id: index + 2, factionId });
+    if (mapSize === 50 && player.tribe === 'natars') {
+      player.tribe = 'romans';
+    }
+    return player;
   });
 };

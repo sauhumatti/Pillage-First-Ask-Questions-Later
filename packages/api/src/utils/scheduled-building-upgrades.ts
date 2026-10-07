@@ -21,6 +21,7 @@ import {
   selectNextScheduledBuildingUpgradeQuery,
   selectScheduledBuildingUpgradesQuery,
 } from '../queries/scheduled-building-upgrades-queries';
+import { getGameTime } from '../simulation/game-clock';
 import { postWorkerMessage } from '../worker/notification-port';
 import { removeBuildingPlaceholder } from './building-placeholder';
 import {
@@ -362,7 +363,7 @@ export const promoteNextScheduledBuildingUpgrade = (
       }
 
       if (cancellationReason) {
-        const timestamp = startsAt ?? Date.now();
+        const timestamp = startsAt ?? getGameTime(database);
         const reasonDetail = getScheduledConstructionCancellationReasonDetail(
           database,
           scheduledUpgrade,

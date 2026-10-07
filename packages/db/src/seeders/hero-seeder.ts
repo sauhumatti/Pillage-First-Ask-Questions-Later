@@ -35,7 +35,7 @@ export const heroSeeder = (database: DbFacade): void => {
         (SELECT id FROM villages WHERE player_id = p.id LIMIT 1)
       FROM players p
       JOIN tribe_ids ti ON ti.id = p.tribe_id
-      WHERE p.id = $player_id;
+      WHERE p.id = $player_id OR (SELECT map_size FROM servers LIMIT 1) = 50;
     `,
     bind: { $player_id: PLAYER_ID },
   });

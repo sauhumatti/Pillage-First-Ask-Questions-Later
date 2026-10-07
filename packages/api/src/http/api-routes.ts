@@ -119,6 +119,10 @@ import {
 } from './controllers/scheduled-building-upgrades-controllers';
 import { getServer } from './controllers/server-controllers';
 import {
+  getSimulation,
+  updateSimulation,
+} from './controllers/simulation-controllers';
+import {
   getGameWorldOverview,
   getPlayerRankings,
   getVillageRankings,
@@ -147,6 +151,8 @@ import { createRoute, type Route } from './route';
 export const apiRoutes = [
   // Server
   createRoute(getServer),
+  createRoute(getSimulation),
+  createRoute(updateSimulation),
 
   // Developer Tools
   createRoute(getDeveloperSettings),

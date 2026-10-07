@@ -1,11 +1,11 @@
 import { z } from 'zod';
-import { PLAYER_ID } from '@pillage-first/game-assets/player';
 import { getUnitDefinition } from '@pillage-first/game-assets/utils/units';
 import type { Troop } from '@pillage-first/types/models/troop';
 import { unitIdSchema } from '@pillage-first/types/models/unit';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
 import { calculateComputedEffect } from '@pillage-first/utils/game/calculate-computed-effect';
 import { selectResourceSiteResourcesRelevantEffectsByTileIdQuery } from '../queries/effect-queries';
+import { getActingPlayerId } from '../simulation/actor';
 import { createEvents } from './create-event';
 import { decreaseTroopWheatConsumption } from './troop-movement';
 import { removeTroops } from './troops';
@@ -95,8 +95,8 @@ export const selectStarvingTroops = (
 // Kills troops in villages that are out of wheat and still losing it. Returns the affected village and tile ids.
 export const starveTroopsAt = (database: DbFacade, timestamp: number) => {
   const villages = database.selectObjects({
-    sql: 'SELECT id, tile_id AS tileId FROM villages WHERE player_id = $player_id;',
-    bind: { $player_id: PLAYER_ID },
+    sql: 'SELECT id, tile_id AS tileId FROM villages WHERE player_id = $player_id OR (SELECT map_size FROM servers LIMIT 1) = 50;',
+    bind: { $player_id: getActingPlayerId() },
     schema: z.strictObject({ id: z.number(), tileId: z.number() }),
   });
 

@@ -24,6 +24,7 @@ import {
   selectWoundedTroopsByVillageQuery,
   updateVillageNameQuery,
 } from '../../queries/player-queries';
+import { getGameTime } from '../../simulation/game-clock';
 import { relocateHero } from '../../utils/hero';
 import {
   hasHero,
@@ -170,7 +171,7 @@ export const getWoundedTroopsByVillage = createController(
     response: z.array(woundedTroopDtoSchema),
   },
 )(({ database, path: { villageId } }) => {
-  materializeWoundedTroopsAt(database, villageId, Date.now());
+  materializeWoundedTroopsAt(database, villageId, getGameTime(database));
 
   const rows = database.selectObjects({
     sql: selectWoundedTroopsByVillageQuery,
@@ -277,7 +278,12 @@ export const relocateReinforcements = createController(
     );
 
     if (hasHero(troops)) {
-      relocateHero(db, sourceVillageId, currentVillageId, Date.now());
+      relocateHero(
+        db,
+        sourceVillageId,
+        currentVillageId,
+        getGameTime(database),
+      );
     }
   });
 });
@@ -323,7 +329,7 @@ export const returnReinforcements = createController(
       throw new Error('Source village not found');
     }
 
-    const now = Date.now();
+    const now = getGameTime(database);
 
     returnStationedTroops(
       db,
@@ -372,7 +378,7 @@ export const returnSentReinforcements = createController(
       throw new Error('Stationed tile not found');
     }
 
-    const now = Date.now();
+    const now = getGameTime(database);
 
     returnStationedTroops(
       db,
@@ -439,7 +445,12 @@ export const relocateSentReinforcements = createController(
     );
 
     if (hasHero(troops)) {
-      relocateHero(db, currentVillageId, stationedVillageId, Date.now());
+      relocateHero(
+        db,
+        currentVillageId,
+        stationedVillageId,
+        getGameTime(database),
+      );
     }
   });
 });

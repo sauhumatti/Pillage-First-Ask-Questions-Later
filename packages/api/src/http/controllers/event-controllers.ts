@@ -19,6 +19,7 @@ import {
   selectTroopMovementEventsQuery,
 } from '../../queries/event-queries';
 import { deleteScheduledBuildingUpgradesByVillageAndFieldQuery } from '../../queries/scheduled-building-upgrades-queries';
+import { getGameTime } from '../../simulation/game-clock';
 import { removeBuildingPlaceholder } from '../../utils/building-placeholder';
 import { createEvents } from '../../utils/create-event';
 import { promoteNextScheduledBuildingUpgrade } from '../../utils/scheduled-building-upgrades';
@@ -170,7 +171,7 @@ export const cancelConstructionEvent = createController(
       removeBuildingPlaceholder(db, villageId, buildingFieldId, buildingId);
     }
 
-    const now = Date.now();
+    const now = getGameTime(database);
     const duration = cancelledEvent.resolvesAt - cancelledEvent.startsAt;
     const elapsed = Math.max(0, now - cancelledEvent.startsAt);
     const completionPercentage =
@@ -243,7 +244,7 @@ export const cancelUnitImprovementEvent = createController(
       addResourceSiteResourcesAt(
         db,
         getVillageTileId(db, cancelledEvent.villageId),
-        Date.now(),
+        getGameTime(database),
         resourcesToRefund,
       );
     }

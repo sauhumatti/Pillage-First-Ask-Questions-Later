@@ -20,6 +20,7 @@ import {
   SectionContent,
 } from 'app/(game)/(village-slug)/components/building-layout';
 import { useTabParam } from 'app/(game)/(village-slug)/hooks/routes/use-tab-param';
+import { useServer } from 'app/(game)/(village-slug)/hooks/use-server';
 import { useTribe } from 'app/(game)/(village-slug)/hooks/use-tribe';
 import { CurrentVillageBuildingQueueContext } from 'app/(game)/(village-slug)/providers/current-village-building-queue-context';
 import { InformationPopover } from 'app/(game)/components/information-popover';
@@ -37,6 +38,7 @@ const BuildingConstructionList = ({
 }: BuildingCategoryPanelProps) => {
   const { t } = useTranslation();
   const tribe = useTribe();
+  const { mapSize } = useServer();
   const {
     buildingFieldId,
     maxLevelByBuildingId,
@@ -50,6 +52,9 @@ const BuildingConstructionList = ({
 
   const buildingsByCategory = useMemo(() => {
     return buildings.filter(({ category, id }) => {
+      if (mapSize === 50 && (id === 'EMBASSY' || id === 'TREASURY')) {
+        return false;
+      }
       if (category !== buildingCategory) {
         return false;
       }
@@ -60,7 +65,7 @@ const BuildingConstructionList = ({
 
       return true;
     });
-  }, [buildingCategory, tribe]);
+  }, [buildingCategory, tribe, mapSize]);
 
   const assessments = useMemo(() => {
     return new Map<

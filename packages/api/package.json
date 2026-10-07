@@ -26,6 +26,9 @@
     },
     "./open-api": {
       "default": "./src/open-api.ts"
+    },
+    "./ai-decision": {
+      "default": "./src/simulation/ai-contract.ts"
     }
   },
   "scripts": {

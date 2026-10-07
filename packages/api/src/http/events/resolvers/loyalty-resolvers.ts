@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { PLAYER_ID } from '@pillage-first/game-assets/player';
 import type { GameEvent } from '@pillage-first/types/models/game-event';
+import { getActingPlayerId } from '../../../simulation/actor';
 import { createLoyaltyIncreaseEvent } from '../../../utils/loyalty';
 import type { Resolver } from '../resolver';
 
@@ -19,7 +19,7 @@ export const loyaltyIncreaseResolver: Resolver<GameEvent<'loyaltyIncrease'>> = (
       WHERE
         v.player_id = $player_id;
     `,
-    bind: { $player_id: PLAYER_ID },
+    bind: { $player_id: getActingPlayerId() },
     schema: z.number(),
   });
 
@@ -32,7 +32,7 @@ export const loyaltyIncreaseResolver: Resolver<GameEvent<'loyaltyIncrease'>> = (
       WHERE
         v.player_id = $player_id;
     `,
-    bind: { $player_id: PLAYER_ID },
+    bind: { $player_id: getActingPlayerId() },
     schema: z.number(),
   });
 

@@ -1,6 +1,5 @@
 import { prngMulberry32 } from 'ts-seedrandom';
 import { z } from 'zod';
-import { PLAYER_ID } from '@pillage-first/game-assets/player';
 import {
   calculateAdventurePointsEarnedBetween,
   calculateNextAdventurePointIncreaseAt,
@@ -8,6 +7,7 @@ import {
 import { speedSchema } from '@pillage-first/types/models/server';
 import type { DbFacade } from '@pillage-first/utils/facades/database';
 import { seededRandomIntFromInterval } from '@pillage-first/utils/random';
+import { getActingPlayerId } from '../simulation/actor';
 
 export const calculateAdventureDuration = (
   database: DbFacade,
@@ -44,7 +44,7 @@ export const calculateAdventureDuration = (
           ) AS completed
     `,
     bind: {
-      $player_id: PLAYER_ID,
+      $player_id: getActingPlayerId(),
       $completed_adventure_count_modifier: completedAdventureCountModifier,
     },
     schema: z.strictObject({
@@ -120,7 +120,7 @@ export const getPlayerHeroAdventureStateAt = (
   const heroId = database.selectValue({
     sql: 'SELECT id FROM heroes WHERE player_id = $player_id',
     bind: {
-      $player_id: PLAYER_ID,
+      $player_id: getActingPlayerId(),
     },
     schema: z.number(),
   })!;

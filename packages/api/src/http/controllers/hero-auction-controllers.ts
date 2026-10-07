@@ -4,6 +4,7 @@ import {
   heroAuctionHistoryEntryDtoSchema,
   heroAuctionSellListingDtoSchema,
 } from '@pillage-first/types/dtos/hero';
+import { getGameTime } from '../../simulation/game-clock';
 import {
   buyHeroAuctionListingById,
   getHeroAuctionBuyListingRows,
@@ -30,9 +31,11 @@ export const getHeroAuctionBuyListings = createController(
     response: z.array(heroAuctionBuyListingDtoSchema),
   },
 )(({ database, path: { playerId } }) => {
-  return getHeroAuctionBuyListingRows(database, playerId, Date.now()).map(
-    mapHeroAuctionBuyListing,
-  );
+  return getHeroAuctionBuyListingRows(
+    database,
+    playerId,
+    getGameTime(database),
+  ).map(mapHeroAuctionBuyListing);
 });
 
 export const buyHeroAuctionListing = createController(
@@ -48,7 +51,12 @@ export const buyHeroAuctionListing = createController(
     },
   },
 )(({ database, path: { playerId, listingId } }) => {
-  buyHeroAuctionListingById(database, playerId, listingId, Date.now());
+  buyHeroAuctionListingById(
+    database,
+    playerId,
+    listingId,
+    getGameTime(database),
+  );
 });
 
 export const getHeroAuctionSellListings = createController(
@@ -63,9 +71,11 @@ export const getHeroAuctionSellListings = createController(
     response: z.array(heroAuctionSellListingDtoSchema),
   },
 )(({ database, path: { playerId } }) => {
-  return getHeroAuctionSellListingRows(database, playerId, Date.now()).map(
-    mapHeroAuctionSellListing,
-  );
+  return getHeroAuctionSellListingRows(
+    database,
+    playerId,
+    getGameTime(database),
+  ).map(mapHeroAuctionSellListing);
 });
 
 export const sellHeroAuctionItem = createController(
@@ -85,7 +95,7 @@ export const sellHeroAuctionItem = createController(
     }),
   },
 )(({ database, path: { playerId }, body: { itemId, amount, mode } }) => {
-  sellHeroItem(database, playerId, itemId, amount, mode, Date.now());
+  sellHeroItem(database, playerId, itemId, amount, mode, getGameTime(database));
 });
 
 export const getHeroAuctionHistory = createController(
@@ -100,7 +110,9 @@ export const getHeroAuctionHistory = createController(
     response: z.array(heroAuctionHistoryEntryDtoSchema),
   },
 )(({ database, path: { playerId } }) => {
-  return getHeroAuctionHistoryRows(database, playerId, Date.now()).map(
-    mapHeroAuctionHistoryEntry,
-  );
+  return getHeroAuctionHistoryRows(
+    database,
+    playerId,
+    getGameTime(database),
+  ).map(mapHeroAuctionHistoryEntry);
 });

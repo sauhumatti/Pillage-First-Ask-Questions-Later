@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { playableTribeSchema } from './tribe';
 
 export const mapSizeSchema = z
-  .union([z.literal(100), z.literal(200), z.literal(300)])
+  .union([z.literal(50), z.literal(100), z.literal(200), z.literal(300)])
   .meta({ id: 'ServerMapSize' });
 
 export const speedSchema = z

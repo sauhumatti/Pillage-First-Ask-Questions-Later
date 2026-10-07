@@ -1,3 +1,9 @@
+import {
+  getGameTime,
+  saveGameClock,
+  startSimulation,
+} from '@pillage-first/api/server';
+import { decideWithOpenRouter } from './ai-provider';
 // Runs one game world in its own thread, like the browser runs it in a Web Worker.
 // The database lives in memory and is written to disk whenever it changes.
 import 'zod/compile';
@@ -192,6 +198,7 @@ const runWorld = async (
 
   const save = async () => {
     await savePromise;
+    saveGameClock(dbFacade);
     const changeCount = getChangeCount();
 
     if (changeCount === savedChangeCount) {
@@ -213,11 +220,14 @@ const runWorld = async (
     save().catch((error) => console.error('Failed to save game world', error));
   }, SAVE_INTERVAL_MS);
 
-  createTroopStarvationEvent(dbFacade, Date.now());
+  const stopSimulation = startSimulation(dbFacade, decideWithOpenRouter);
+  createTroopStarvationEvent(dbFacade, getGameTime(dbFacade));
 
   const dataSource = createSchedulerDataSource(dbFacade);
-  initScheduler(dataSource);
-  scheduleNextEvent(dataSource);
+  if (!stopSimulation) {
+    initScheduler(dataSource);
+    scheduleNextEvent(dataSource);
+  }
 
   await save();
 
@@ -256,6 +266,7 @@ const runWorld = async (
       case 'close': {
         clearInterval(saveInterval);
         cancelScheduling();
+        stopSimulation?.();
         await save();
         dbFacade.close();
         database.close();

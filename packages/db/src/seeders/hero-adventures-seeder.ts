@@ -16,7 +16,7 @@ export const heroAdventuresSeeder = (database: DbFacade): void => {
       FROM
         heroes
       WHERE
-        player_id = $player_id;
+        player_id = $player_id OR (SELECT map_size FROM servers LIMIT 1) = 50;
     `,
     bind: {
       $player_id: PLAYER_ID,

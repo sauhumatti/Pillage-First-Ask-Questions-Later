@@ -1,3 +1,5 @@
+import { getGameTime } from '../simulation/game-clock';
+import { startSimulation } from '../simulation/runtime';
 import 'zod/compile';
 import type {
   ApiNotificationEvent,
@@ -22,6 +24,7 @@ import {
 } from './notification-port';
 
 let dbFacade: DbFacade | null = null;
+let stopSimulation: (() => void) | null = null;
 
 const getInitializedDatabase = (): DbFacade => {
   if (dbFacade === null) {
@@ -56,12 +59,15 @@ globalThis.addEventListener('message', async (event: MessageEvent) => {
         dbFacade = await openWorkerDatabase(serverSlug);
 
         // Starvation is checked by a recurring event, which older game worlds don't have yet
-        createTroopStarvationEvent(dbFacade, Date.now());
+        stopSimulation = startSimulation(dbFacade);
+        createTroopStarvationEvent(dbFacade, getGameTime(dbFacade));
 
         const dataSource = createSchedulerDataSource(dbFacade);
 
-        initScheduler(dataSource);
-        scheduleNextEvent(dataSource);
+        if (!stopSimulation) {
+          initScheduler(dataSource);
+          scheduleNextEvent(dataSource);
+        }
 
         postWorkerMessage(
           {
@@ -131,6 +137,8 @@ globalThis.addEventListener('message', async (event: MessageEvent) => {
     case 'WORKER_CLOSE': {
       setShouldPostNotifications(false);
       cancelScheduling();
+      stopSimulation?.();
+      stopSimulation = null;
 
       if (dbFacade !== null) {
         closeWorkerDatabase(dbFacade);

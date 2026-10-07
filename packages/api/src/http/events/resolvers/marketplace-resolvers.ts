@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { PLAYER_ID } from '@pillage-first/game-assets/player';
 import type { GameEvent } from '@pillage-first/types/models/game-event';
+import { getActingPlayerId } from '../../../simulation/actor';
 import { createEvents } from '../../../utils/create-event';
 import {
   getMarketplaceVillageByTileId,
@@ -87,7 +87,7 @@ export const resourceTransferResolver: Resolver<
     bind: {
       $origin_village_id: villageId,
       $target_village_id: targetVillageId,
-      $player_id: PLAYER_ID,
+      $player_id: getActingPlayerId(),
     },
     schema: z.number(),
   });

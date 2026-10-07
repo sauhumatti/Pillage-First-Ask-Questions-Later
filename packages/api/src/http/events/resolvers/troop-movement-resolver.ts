@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import { adventureLootTable } from '@pillage-first/game-assets/loot-tables';
-import { PLAYER_ID } from '@pillage-first/game-assets/player';
 import { newVillageQuestsFactory } from '@pillage-first/game-assets/quests';
 import { getBuildingDefinition } from '@pillage-first/game-assets/utils/buildings';
 import { buildingFieldsFactory } from '@pillage-first/game-assets/village';
@@ -37,10 +36,8 @@ import {
   updateCompletedHeroAdventuresByHeroIdQuery,
   updateHeroAfterAdventureByHeroIdQuery,
 } from '../../../queries/troop-movement-queries';
-import {
-  selectPlayerVillageIdByTileIdQuery,
-  selectVillageIdAndTileIdQuery,
-} from '../../../queries/village-queries';
+import { selectVillageIdAndTileIdQuery } from '../../../queries/village-queries';
+import { getActingPlayerId } from '../../../simulation/actor';
 import { createEvents } from '../../../utils/create-event';
 import {
   createHeroHealthRegenerationEventByVillageId,
@@ -202,7 +199,7 @@ export const findNewVillageMovementResolver: Resolver<
     sql: selectNewVillageFoundationTileByTileIdAndPlayerIdQuery,
     bind: {
       $tile_id: targetTileId,
-      $player_id: PLAYER_ID,
+      $player_id: getActingPlayerId(),
     },
     schema: z.strictObject({
       id: z.number(),
@@ -219,7 +216,7 @@ export const findNewVillageMovementResolver: Resolver<
     bind: {
       $name: 'New village',
       $tile_id: tileId,
-      $player_id: PLAYER_ID,
+      $player_id: getActingPlayerId(),
       $parent_village_id: villageId,
     },
     schema: z.number(),
@@ -382,8 +379,8 @@ export const returnMovementResolver: Resolver<
   }
 
   const targetVillageIds = database.selectValues({
-    sql: selectPlayerVillageIdByTileIdQuery,
-    bind: { $tile_id: targetTileId, $player_id: PLAYER_ID },
+    sql: 'SELECT id FROM villages WHERE tile_id = $tile_id;',
+    bind: { $tile_id: targetTileId },
     schema: z.number(),
   });
 
@@ -592,8 +589,8 @@ export const attackMovementResolver: Resolver<
   }
 
   const targetVillageIds = database.selectValues({
-    sql: selectPlayerVillageIdByTileIdQuery,
-    bind: { $tile_id: targetTileId, $player_id: PLAYER_ID },
+    sql: 'SELECT id FROM villages WHERE tile_id = $tile_id;',
+    bind: { $tile_id: targetTileId },
     schema: z.number(),
   });
 
@@ -660,8 +657,8 @@ export const raidMovementResolver: Resolver<GameEvent<'troopMovementRaid'>> = (
   }
 
   const targetVillageIds = database.selectValues({
-    sql: selectPlayerVillageIdByTileIdQuery,
-    bind: { $tile_id: targetTileId, $player_id: PLAYER_ID },
+    sql: 'SELECT id FROM villages WHERE tile_id = $tile_id;',
+    bind: { $tile_id: targetTileId },
     schema: z.number(),
   });
 

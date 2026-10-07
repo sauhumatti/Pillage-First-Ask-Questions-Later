@@ -4,6 +4,7 @@ import {
   deleteOasisEffectsQuery,
 } from '../../queries/oasis-queries';
 import { selectVillageIdByTileIdQuery } from '../../queries/village-queries';
+import { getGameTime } from '../../simulation/game-clock';
 import {
   occupyOasisForVillage,
   returnOasisReinforcements,
@@ -33,7 +34,7 @@ export const occupyOasis = createController(
       schema: z.number(),
     })!;
 
-    occupyOasisForVillage(db, villageId, oasisTileId, Date.now());
+    occupyOasisForVillage(db, villageId, oasisTileId, getGameTime(database));
   });
 });
 
@@ -51,7 +52,7 @@ export const abandonOasis = createController(
   },
 )(({ database, path: { oasisTileId, tileId } }) => {
   database.transaction((db) => {
-    const now = Date.now();
+    const now = getGameTime(database);
     const villageId = db.selectValue({
       sql: selectVillageIdByTileIdQuery,
       bind: {

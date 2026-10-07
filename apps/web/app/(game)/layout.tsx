@@ -14,6 +14,7 @@ import type { Server } from '@pillage-first/types/models/server';
 import type { Route } from '@react-router/types/app/(game)/+types/layout';
 import { useMediaQuery } from 'app/(game)/(village-slug)/hooks/dom/use-media-query';
 import { Notifier } from 'app/(game)/components/notifier';
+import { SimulationControls } from 'app/(game)/components/simulation-controls';
 import { serverExistAndLockMiddleware } from 'app/(game)/middleware/server-already-open-middleware';
 import {
   ApiProvider,
@@ -152,6 +153,7 @@ const LayoutContent = memo<Route.ComponentProps>(
             <Suspense fallback={<ApiProviderFallback />}>
               <div className="api-provider-splash-content">
                 <ApiProvider serverSlug={serverSlug}>
+                  <SimulationControls />
                   <Outlet />
                   <Notifier serverSlug={serverSlug} />
                 </ApiProvider>

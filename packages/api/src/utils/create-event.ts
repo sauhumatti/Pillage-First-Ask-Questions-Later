@@ -8,6 +8,7 @@ import type {
 import type { DbFacade } from '@pillage-first/utils/facades/database';
 import { triggerKick } from '../http/events/scheduler/scheduler-signal';
 import { selectNextEventQuery } from '../queries/event-queries';
+import { getGameTime } from '../simulation/game-clock';
 import { postWorkerMessage } from '../worker/notification-port';
 import {
   getEventCost,
@@ -91,7 +92,7 @@ export const createEvents = <T extends GameEventType>(
 
   const earliestEvent = events.at(0)!;
 
-  const now = Date.now();
+  const now = getGameTime(database);
   const newResolvesAt = events.map((e) => e.startsAt + e.duration);
   const earliestNewResolvesAt = earliestEvent.startsAt + earliestEvent.duration;
 

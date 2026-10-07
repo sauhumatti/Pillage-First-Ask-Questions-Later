@@ -101,6 +101,13 @@ class RunningWorld {
     this.listeners.add(listener);
     return () => {
       this.listeners.delete(listener);
+      if (this.listeners.size === 0) {
+        void this.request({
+          url: '/simulation',
+          method: 'patch',
+          body: { rate: 0 },
+        }).catch(() => {});
+      }
     };
   }
 }

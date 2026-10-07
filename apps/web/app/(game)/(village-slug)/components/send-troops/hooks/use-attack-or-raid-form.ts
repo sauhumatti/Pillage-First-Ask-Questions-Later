@@ -41,8 +41,6 @@ export type AttackOrRaidConfirmationOption =
       type: 'heroOasisAnimalAction';
     };
 
-const hasHardcodedEquippedAnimalCagesForTesting = true;
-
 const isOnlyScoutsSelected = (units: UnitSelection[]) => {
   const selectedUnits = units.filter((unit) => unit.selected > 0);
 
@@ -52,25 +50,14 @@ const isOnlyScoutsSelected = (units: UnitSelection[]) => {
   );
 };
 
-const isOnlyHeroSelected = (units: UnitSelection[]) => {
-  const selectedUnits = units.filter((unit) => unit.selected > 0);
-
-  return (
-    selectedUnits.length === 1 &&
-    selectedUnits.every((unit) => unit.tier === 'hero')
-  );
-};
-
 const getRequiredConfirmationOption = ({
   data,
   getCatapultConfirmationOption,
-  isTargetUnoccupiedOasis,
 }: {
   data: AttackOrRaidFormValues;
   getCatapultConfirmationOption: (
     data: AttackOrRaidFormValues,
   ) => CatapultTargetsConfirmationOption | null;
-  isTargetUnoccupiedOasis: boolean;
 }): AttackOrRaidConfirmationOption | null => {
   if (isOnlyScoutsSelected(data.units)) {
     return { type: 'scoutingTarget' };
@@ -80,14 +67,6 @@ const getRequiredConfirmationOption = ({
 
   if (catapultConfirmationOption) {
     return catapultConfirmationOption;
-  }
-
-  if (
-    isTargetUnoccupiedOasis &&
-    hasHardcodedEquippedAnimalCagesForTesting &&
-    isOnlyHeroSelected(data.units)
-  ) {
-    return { type: 'heroOasisAnimalAction' };
   }
 
   return null;
@@ -151,7 +130,6 @@ export const useAttackOrRaidForm = ({
   action = 'attack',
   targetTileId,
   targetTribe,
-  isTargetUnoccupiedOasis = false,
   onSuccess,
 }: UseAttackOrRaidFormOptions = {}) => {
   const tribe = useTribe();
@@ -185,7 +163,6 @@ export const useAttackOrRaidForm = ({
       const requiredConfirmationOption = getRequiredConfirmationOption({
         data,
         getCatapultConfirmationOption,
-        isTargetUnoccupiedOasis,
       });
 
       return (
@@ -201,7 +178,6 @@ export const useAttackOrRaidForm = ({
     const confirmationOption = getRequiredConfirmationOption({
       data: strippedData,
       getCatapultConfirmationOption,
-      isTargetUnoccupiedOasis,
     });
     const dataWithDefaults = addDefaultConfirmationOptionData(
       strippedData,
@@ -228,7 +204,6 @@ export const useAttackOrRaidForm = ({
     ? getRequiredConfirmationOption({
         data: troopMovementForm.formData.current,
         getCatapultConfirmationOption,
-        isTargetUnoccupiedOasis,
       })
     : null;
 

@@ -1,8 +1,9 @@
 let currentTime = Date.now();
+let simulationTime: number | null = null;
 const listeners = new Set<() => void>();
 
 const refreshCurrentTime = () => {
-  const nextTime = Date.now();
+  const nextTime = simulationTime ?? Date.now();
   if (nextTime === currentTime) {
     return false;
   }
@@ -23,6 +24,11 @@ const refreshAndNotify = () => {
   }
 
   notifyListeners();
+};
+
+export const setSimulationTime = (time: number | null) => {
+  simulationTime = time;
+  refreshAndNotify();
 };
 
 export const subscribeToTimer = (callback: () => void) => {

@@ -1,8 +1,8 @@
 import { z } from 'zod';
-import { PLAYER_ID } from '@pillage-first/game-assets/player';
 import { calculateHealthRegenerationEventDuration } from '@pillage-first/game-assets/utils/hero';
 import type { GameEvent } from '@pillage-first/types/models/game-event';
 import { insertHeroEffectsQuery } from '../../../queries/effect-queries';
+import { getActingPlayerId } from '../../../simulation/actor';
 import { createEvents } from '../../../utils/create-event';
 import { addTroops } from '../../../utils/troops';
 import { updateResourceSiteResourcesAt } from '../../../utils/village';
@@ -28,7 +28,7 @@ export const heroRevivalResolver: Resolver<GameEvent<'heroRevival'>> = (
       WHERE heroes.player_id = $player_id;
     `,
       bind: {
-        $player_id: PLAYER_ID,
+        $player_id: getActingPlayerId(),
       },
       schema: z.strictObject({
         villageId: z.number(),
@@ -42,12 +42,12 @@ export const heroRevivalResolver: Resolver<GameEvent<'heroRevival'>> = (
 
   database.exec({
     sql: 'UPDATE heroes SET health = 100 WHERE player_id = $player_id;',
-    bind: { $player_id: PLAYER_ID },
+    bind: { $player_id: getActingPlayerId() },
   });
 
   database.exec({
     sql: insertHeroEffectsQuery,
-    bind: { $player_id: PLAYER_ID },
+    bind: { $player_id: getActingPlayerId() },
   });
 
   addTroops(database, [
@@ -84,7 +84,7 @@ export const heroHealthRegenerationResolver: Resolver<
 
   database.exec({
     sql: 'UPDATE heroes SET health = MIN(health + 1, 100) WHERE player_id = $player_id AND health > 0;',
-    bind: { $player_id: PLAYER_ID },
+    bind: { $player_id: getActingPlayerId() },
   });
 
   const { health, healthRegeneration, speed, tileId, villageId } =
@@ -102,7 +102,7 @@ export const heroHealthRegenerationResolver: Resolver<
       WHERE heroes.player_id = $player_id;
     `,
       bind: {
-        $player_id: PLAYER_ID,
+        $player_id: getActingPlayerId(),
       },
       schema: z.strictObject({
         health: z.number(),

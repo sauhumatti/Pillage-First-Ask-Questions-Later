@@ -23,7 +23,7 @@ const resourceBuildingFieldClassName =
   'relative block w-14 lg:w-28 aspect-3/2 bg-contain bg-center bg-no-repeat rounded-full non-selectable hover:brightness-110 hover:drop-shadow-[0_0_6px_rgba(255,236,170,0.9)] transition-[filter] focus:outline-hidden focus-visible:ring-2 focus-visible:ring-black/80 dark:focus-visible:ring-ring';
 
 const villageBuildingFieldClassName =
-  'relative block size-10 lg:size-16 rounded-xs non-selectable focus:outline-hidden focus-visible:ring-2 focus-visible:ring-black/80 dark:focus-visible:ring-ring';
+  'relative block size-12 lg:size-24 rounded-xs non-selectable focus:outline-hidden focus-visible:ring-2 focus-visible:ring-black/80 dark:focus-visible:ring-ring';
 
 const noop = () => {};
 

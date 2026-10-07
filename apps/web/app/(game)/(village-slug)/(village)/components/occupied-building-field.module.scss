@@ -1,3 +1,35 @@
+// Walls use the art of the tribe's wall style
+$wall-art: (
+  roman-wall: city-wall,
+  gaul-wall: palisade,
+  teutonic-wall: earth-wall,
+  egyptian-wall: makeshift-wall,
+  hun-wall: stone-wall,
+  spartan-wall: stone-wall,
+  natar-wall: stone-wall,
+);
+
+// Buildings the graphics pack has no art for, drawn by scripts/generate-buildings.ts
+$generated-buildings: (
+  smithy,
+  embassy,
+  trade-office,
+  town-hall,
+  great-warehouse,
+  great-granary,
+  gatherers-hut,
+  hunters-lodge,
+  asclepeion,
+);
+
+@mixin buildingImage($url) {
+  background-image: url($url);
+  background-color: transparent !important;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+}
+
 @each $skinVariantSelector, $imagesPath in $skinVariantPaths {
   :global(html.skin-variant-#{$skinVariantSelector}) .building {
     $base: '#{$imagesPath}/buildings';
@@ -7,16 +39,24 @@
       $villageBase: '#{$base}/village';
 
       @each $building in $buildings {
-        $buildingBase: '#{$villageBase}/#{$building}';
-
         &-#{$building} {
-          background-image: url('#{$buildingBase}/#{$building}-tier-1.png');
-          background-color: transparent !important;
-          background-repeat: no-repeat;
-          background-position: center;
-          background-size: contain;
+          @include buildingImage('#{$villageBase}/#{$building}/#{$building}-tier-1.png');
         }
       }
+
+      @each $wall, $art in $wall-art {
+        &-#{$wall} {
+          @include buildingImage('#{$villageBase}/#{$art}/#{$art}-tier-1.png');
+        }
+      }
+    }
+  }
+}
+
+.building-village {
+  @each $building in $generated-buildings {
+    &-#{$building} {
+      @include buildingImage('/village-buildings/#{$building}.webp');
     }
   }
 }

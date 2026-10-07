@@ -141,7 +141,7 @@ const getTileClassNames = (
     return clsx(
       cellStyles.tile,
       cellStyles[
-        `village-tile-${tribe}-${getVillageSize(tile.ownerVillage.population)}`
+        `village-tile-${tribe}-${getVillageSize(tile.ownerVillage?.population ?? 0)}`
       ],
       cellStyles['occupied-tile'],
       cellStyles[`occupied-tile-magnification-${magnification}`],

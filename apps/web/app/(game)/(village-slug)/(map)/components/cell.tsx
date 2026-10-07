@@ -110,6 +110,15 @@ const CellIcons = (props: CellIconsProps) => {
   return null;
 };
 
+// Villages look bigger on the map as their population grows
+const getVillageSize = (population: number) => {
+  if (population >= 500) {
+    return 'lg';
+  }
+
+  return population >= 150 ? 'md' : 'sm';
+};
+
 const getTileClassNames = (
   tile: NonNullable<Tile>,
   getReputation: CellBaseProps['getReputation'],
@@ -125,12 +134,15 @@ const getTileClassNames = (
   }
 
   if (tile.type === 'free' && tile.owner !== null) {
-    const { faction } = tile.owner;
+    const { faction, tribe } = tile.owner;
     const reputationLevel =
       faction === 'player' ? 'player' : getReputation(faction).reputationLevel;
 
     return clsx(
       cellStyles.tile,
+      cellStyles[
+        `village-tile-${tribe}-${getVillageSize(tile.ownerVillage.population)}`
+      ],
       cellStyles['occupied-tile'],
       cellStyles[`occupied-tile-magnification-${magnification}`],
       shouldShowFactionReputation &&

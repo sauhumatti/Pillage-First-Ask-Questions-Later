@@ -51,6 +51,23 @@
   }
 }
 
+// Villages, in each tribe's style and sized by population
+@each $skinVariantSelector, $imagesPath in $skinVariantPaths {
+  :global(html.skin-variant-#{$skinVariantSelector}) {
+    $base: '#{$imagesPath}/map/villages';
+
+    .village-tile {
+      @each $tribe in (romans, gauls, teutons, egyptians, huns, spartans, natars) {
+        @each $size in (sm, md, lg) {
+          &-#{$tribe}-#{$size} {
+            background-image: url('#{$base}/#{$tribe}/#{$size}.avif?v=#{$graphics-version}');
+          }
+        }
+      }
+    }
+  }
+}
+
 // IMPORTANT: If this gets changed, make sure to implement the same change in tiles-seeder as well!
 $shapes-by-group: (
   0: (1),

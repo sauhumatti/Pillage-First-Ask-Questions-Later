@@ -86,7 +86,7 @@
   },
   "overrides": [
     {
-      "includes": ["**/vite.config.ts", "plugins/**/*.ts"],
+      "includes": ["**/vite.config.ts", "plugins/**/*.ts", "scripts/**/*.ts"],
       "linter": {
         "rules": {
           "style": {

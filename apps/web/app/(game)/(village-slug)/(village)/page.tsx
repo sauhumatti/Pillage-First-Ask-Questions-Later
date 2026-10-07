@@ -5,7 +5,10 @@ import type { ITooltip as ReactTooltipProps } from 'react-tooltip';
 import type { BuildingField as BuildingFieldType } from '@pillage-first/types/models/building-field';
 import type { Route } from '@react-router/types/app/(game)/(village-slug)/(village)/+types/page';
 import { BuildingField } from 'app/(game)/(village-slug)/(village)/components/building-field';
-import { VillageScene } from 'app/(game)/(village-slug)/(village)/components/village-scene';
+import {
+  ResourceFieldsScene,
+  VillageScene,
+} from 'app/(game)/(village-slug)/(village)/components/village-scene';
 import { VillageMapContext } from 'app/(game)/(village-slug)/(village)/providers/village-map-context';
 import { BuildingFieldTooltip } from 'app/(game)/(village-slug)/components/building-field-tooltip';
 import { useCurrentVillage } from 'app/(game)/(village-slug)/hooks/current-village/use-current-village';
@@ -76,12 +79,15 @@ const VillagePage = (props: Route.ComponentProps) => {
 
   useEffect(() => {
     const className = layoutStyles['background-image--village'];
-    document.body.classList.toggle(className, isVillagePageOpen);
+    document.body.classList.toggle(
+      className,
+      isVillagePageOpen || isResourcesPageOpen,
+    );
 
     return () => {
       document.body.classList.remove(className);
     };
-  }, [isVillagePageOpen]);
+  }, [isVillagePageOpen, isResourcesPageOpen]);
 
   const title = `${isResourcesPageOpen ? t('Resources') : t('Village')} | Pillage First! - ${serverSlug} - ${villageSlug}`;
   const buildingFieldIds = isResourcesPageOpen
@@ -118,6 +124,7 @@ const VillagePage = (props: Route.ComponentProps) => {
       <main className="flex flex-col items-center justify-center mx-auto px-safe lg:px-0 lg:mt-20 lg:mb-0 max-h-[calc(100dvh-12rem)] standalone:max-h-[calc(100dvh-15rem)] h-screen lg:h-auto lg:max-h-none overflow-x-hidden">
         <VillageMapContext value={villageMapContextValue}>
           <div className="relative aspect-16/10 scrollbar-hidden min-w-[460px] max-w-5xl w-full">
+            {isResourcesPageOpen && <ResourceFieldsScene />}
             {isVillagePageOpen && (
               <VillageScene wallField={buildingFieldById.get(40) ?? null} />
             )}
@@ -131,10 +138,12 @@ const VillagePage = (props: Route.ComponentProps) => {
             {isResourcesPageOpen && (
               <Link
                 to="../village"
-                className="absolute text-xs lg:size-24 lg:text-sm left-1/2 top-1/2 size-14 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-red-500"
+                className="group absolute left-1/2 top-1/2 h-12 w-16 lg:h-[7.5rem] lg:w-[10.5rem] -translate-x-1/2 -translate-y-1/2 rounded-[50%] transition-shadow hover:shadow-[0_0_0_3px_rgba(255,236,170,0.8)] focus:outline-hidden focus-visible:ring-2 focus-visible:ring-black/80"
                 aria-label={t('Village')}
               >
-                Village
+                <span className="absolute left-1/2 top-full -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-xs bg-black/60 px-1 text-3xs text-white md:text-2xs">
+                  {t('Village')}
+                </span>
               </Link>
             )}
           </div>

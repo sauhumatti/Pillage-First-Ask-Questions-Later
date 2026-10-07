@@ -17,6 +17,7 @@
     "generate-api-route-types": "node scripts/generate-api-route-types.ts",
     "inject-graphics": "node scripts/inject-graphics.ts",
     "generate-village-scene": "node scripts/generate-village-scene.ts",
+    "generate-resource-fields": "node scripts/generate-resource-fields.ts",
     "extract-sql-schema": "node scripts/extract-sql-schema.ts",
     "extract-sql-usage": "node scripts/extract-sql-usage.ts",
     "explain-query-plan-sql-usage": "node scripts/explain-query-plan-sql-usage.ts",

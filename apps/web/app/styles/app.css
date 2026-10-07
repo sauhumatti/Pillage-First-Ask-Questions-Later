@@ -348,3 +348,179 @@ summary::-webkit-details-marker {
 summary::marker {
   content: "";
 }
+
+/* Game chrome shares the village artwork's forest and parchment palette. */
+.game-interface {
+  --background: #fcfaf5;
+  --foreground: #27342b;
+  --card: #fcfaf5;
+  --card-foreground: #27342b;
+  --popover: #fffdf8;
+  --popover-foreground: #27342b;
+  --primary: #315d46;
+  --primary-foreground: #ffffff;
+  --secondary: #eeeee4;
+  --secondary-foreground: #27342b;
+  --muted: #eeeee4;
+  --muted-foreground: #637064;
+  --accent: #e7eddf;
+  --accent-foreground: #24432f;
+  --border: #dcded1;
+  --input: #dcded1;
+  --ring: #66875a;
+}
+
+.dark .game-interface {
+  --background: #17221d;
+  --foreground: #edf2e9;
+  --card: #1e2d25;
+  --card-foreground: #edf2e9;
+  --popover: #1e2d25;
+  --popover-foreground: #edf2e9;
+  --primary: #b4cfa2;
+  --primary-foreground: #17221d;
+  --secondary: #2a3a30;
+  --secondary-foreground: #edf2e9;
+  --muted: #2a3a30;
+  --muted-foreground: #a7b6a7;
+  --accent: #354937;
+  --accent-foreground: #edf2e9;
+  --border: #3a4a3c;
+  --input: #3a4a3c;
+  --ring: #b4cfa2;
+}
+
+.simulation-bar {
+  min-inline-size: 0;
+  position: relative;
+  z-index: 10;
+  border-bottom: 1px solid #ffffff1a;
+  background: #203f30;
+  color: #f4f5e9;
+  box-shadow: 0 2px 12px #122b241a;
+}
+
+.simulation-bar-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  max-width: 80rem;
+  margin-inline: auto;
+  padding: 0.5rem max(0.75rem, env(safe-area-inset-left));
+}
+
+.playback-buttons {
+  background: #102b2280;
+  border: 1px solid #ffffff14;
+}
+
+.playback-button {
+  padding-inline: 0.5rem;
+  color: #d5e5d8;
+}
+
+.playback-button:hover {
+  background: #ffffff1a;
+  color: #ffffff;
+}
+
+.playback-button[aria-pressed="true"] {
+  background: #e8ebd4;
+  color: #203f30;
+}
+
+.playback-button:focus-visible {
+  outline: 2px solid #e8ebd4;
+  outline-offset: 2px;
+}
+
+.game-top-navigation {
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 4px 16px #142a2314;
+}
+
+.game-nav-main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.125rem;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 0.875rem;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--muted-foreground);
+  transition: background-color 160ms, color 160ms, transform 160ms;
+}
+
+.game-nav-main:hover {
+  background: var(--accent);
+  color: var(--foreground);
+}
+
+.game-nav-main.is-active {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border-color: var(--primary);
+  box-shadow: 0 3px 8px #203f3026;
+}
+
+.game-nav-main:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+}
+
+.game-nav-main:active {
+  transform: scale(0.96);
+}
+
+.game-nav-side {
+  background: var(--card);
+  border-color: var(--border);
+  box-shadow: 0 2px 5px #203f3012;
+}
+
+.game-resource-panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-top: 0;
+  border-radius: 0 0 1rem 1rem;
+  box-shadow: 0 8px 20px #18352226;
+}
+
+.resource-card {
+  background: var(--muted);
+}
+
+@media (min-width: 1024px) {
+  .game-nav-side {
+    border-radius: 0.75rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-nav-main,
+  .resource-card * {
+    transition: none;
+  }
+}
+
+.game-mobile-navigation {
+  border-top: 1px solid var(--border);
+  border-radius: 1rem 1rem 0 0;
+  background: var(--card);
+  box-shadow: 0 -4px 20px #122b241a;
+}
+
+.game-construction-panel {
+  border-radius: 0 0.875rem 0.875rem 0;
+  box-shadow: 0 4px 16px #1835221f;
+}
+
+.game-interface [data-slot="dialog-content"] {
+  border-radius: 1rem;
+  box-shadow: 0 16px 64px #122b2452;
+}

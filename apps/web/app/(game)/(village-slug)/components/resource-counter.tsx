@@ -1,5 +1,6 @@
 import { clsx } from 'clsx';
 import { use } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { Resource } from '@pillage-first/types/models/resource';
 import {
   formatNumberWithCommas,
@@ -19,6 +20,13 @@ export const ResourceCounter = ({
   resource,
   showDetails = true,
 }: ResourceCounterProps) => {
+  const { t } = useTranslation();
+  const resourceLabels = {
+    wood: t('Wood'),
+    clay: t('Clay'),
+    iron: t('Iron'),
+    wheat: t('Wheat'),
+  };
   const isWiderThanLg = useMediaQuery('(min-width: 1024px)');
   const { computedWarehouseCapacityEffect, computedGranaryCapacityEffect } =
     use(CurrentVillageComputedEffectsContext);
@@ -35,7 +43,13 @@ export const ResourceCounter = ({
     hasNegativeProduction,
   } = useCalculatedResource(resource, storage);
 
-  const storagePercentage = (calculatedResourceAmount / storageCapacity) * 100;
+  const storagePercentage =
+    storageCapacity > 0
+      ? Math.min(
+          100,
+          Math.max(0, (calculatedResourceAmount / storageCapacity) * 100),
+        )
+      : 0;
 
   const formattedCurrentAmount = formatNumberWithCommas(
     calculatedResourceAmount,
@@ -47,14 +61,17 @@ export const ResourceCounter = ({
     : truncateToShortForm(hourlyProduction);
 
   return (
-    <div className="flex w-full flex-col gap-1">
+    <div className="resource-card flex min-w-0 w-full flex-col gap-1.5 rounded-lg px-1.5 py-1.5 sm:px-2.5">
+      <span className="text-[9px] font-semibold tracking-wider text-muted-foreground uppercase sm:text-[10px]">
+        {resourceLabels[resource]}
+      </span>
       <div className="flex w-full items-center justify-between">
         <Icon
           className="size-4 lg:size-6"
           type={resource}
         />
         <span className="inline-flex items-center">
-          <span className="text-xs lg:text-md font-medium leading-none">
+          <span className="text-xs lg:text-sm font-semibold leading-none tabular-nums">
             {formattedCurrentAmount}
           </span>
           <span className="hidden lg:inline-flex text-xs text-muted-foreground font-normal leading-none transition-colors">
@@ -62,14 +79,13 @@ export const ResourceCounter = ({
           </span>
         </span>
       </div>
-      <div className="relative flex h-2 lg:h-2.5 w-full rounded-xs bg-[linear-gradient(#7b746e,#dad8d5,#ebebeb)] shadow-inner border border-[#b8b2a9] overflow-hidden">
+      <div className="relative flex h-1.5 w-full rounded-full bg-foreground/10 overflow-hidden">
         <div
           className={clsx(
             isFull || hasNegativeProduction
-              ? 'bg-[linear-gradient(#ff9696,#ff9696_40%,#a60000)] border-[#a60000]'
-              : 'bg-[linear-gradient(#c7e94f,#c7e94f_40%,#506d00)] border-[#506d00]',
-            calculatedResourceAmount !== 0 && 'border',
-            'flex w-full h-full rounded-xs origin-left transition-transform',
+              ? 'bg-amber-600 dark:bg-amber-400'
+              : 'bg-emerald-700 dark:bg-emerald-400',
+            'flex w-full h-full rounded-full origin-left transition-transform',
           )}
           style={{
             transform: `scaleX(${storagePercentage / 100})`,
@@ -90,7 +106,14 @@ export const ResourceCounter = ({
             <span className="inline-flex lg:hidden text-2xs md:text-xs">
               {formattedStorageCapacity}
             </span>
-            <span className="inline-flex text-2xs md:text-xs">
+            <span
+              className={clsx(
+                'inline-flex text-2xs md:text-xs tabular-nums',
+                hasNegativeProduction
+                  ? 'text-destructive'
+                  : 'text-muted-foreground',
+              )}
+            >
               {formattedHourlyProduction}/h
             </span>
           </div>

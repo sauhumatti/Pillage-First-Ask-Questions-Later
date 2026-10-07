@@ -34,7 +34,7 @@ import {
 } from 'app/(game)/(village-slug)/providers/current-village-building-queue-context';
 
 const iconClassName =
-  'text-2xl lg:text-3xl bg-background text-muted-foreground px-2 py-2.5 box-content border border-border rounded-xs transition-colors';
+  'text-2xl lg:text-3xl bg-background text-muted-foreground px-2 py-2.5 box-content border border-border rounded-lg shadow-sm transition-colors';
 
 type DropTargetStatus = 'valid' | 'invalid';
 
@@ -392,7 +392,10 @@ const ConstructionQueueContent = () => {
     }),
   ];
 
-  const visibleSlots = isWiderThanLg ? slots : slots.slice(0, 1);
+  const visibleSlots =
+    isWiderThanLg && orderedEvents.length > 0
+      ? slots.filter((slot) => slot.type === 'building')
+      : slots.slice(0, 1);
 
   const totalCost = orderedScheduledEvents.length > 0 && (
     <div className="rounded-tr rounded-br border-r border-t border-b border-border bg-background px-2 py-1 ml-1 shadow-xs transition-[background-color,border-color,color]">
@@ -421,16 +424,30 @@ const ConstructionQueueContent = () => {
         validDropTargetIds={validDropTargetIds}
       />
     ) : (
-      <li key={slot.id}>
+      <li
+        key={slot.id}
+        className="flex items-center gap-2"
+      >
         <ImHammer className={iconClassName} />
+        <span className="hidden lg:block px-2 text-sm text-muted-foreground">
+          {t('No construction queued')}
+        </span>
       </li>
     );
 
   return (
     <aside
-      className="fixed bottom-[calc(max(var(--twsa-safe-area-inset-bottom),2rem)+4.5rem)] left-safe z-10 flex max-w-[calc(100vw-var(--twsa-safe-area-inset-left)-var(--twsa-safe-area-inset-right)-1rem)] flex-col items-start gap-1 [contain:paint] transition-[bottom,color,left] lg:bottom-14"
+      className="game-construction-panel fixed bottom-[calc(max(var(--twsa-safe-area-inset-bottom),2rem)+4.5rem)] left-safe z-10 flex max-w-[calc(100vw-var(--twsa-safe-area-inset-left)-var(--twsa-safe-area-inset-right)-1rem)] flex-col items-start gap-1 [contain:paint] transition-[bottom,color,left] lg:bottom-14"
       ref={containerRef}
     >
+      {isWiderThanLg && (
+        <div className="flex w-full items-center justify-between gap-4 rounded-t-xl bg-card px-3 py-2 text-xs font-semibold text-muted-foreground">
+          <span>{t('Construction')}</span>
+          <span className="tabular-nums">
+            {orderedEvents.length}/{totalSlotsCount}
+          </span>
+        </div>
+      )}
       {isWiderThanLg && totalCost}
       {!isWiderThanLg && !isExtended && selectedEvent && (
         <ConstructionQueueBuilding

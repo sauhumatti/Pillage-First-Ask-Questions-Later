@@ -1,7 +1,6 @@
 import { clsx } from 'clsx';
 import {
   type ComponentProps,
-  Fragment,
   memo,
   type PropsWithChildren,
   type ReactNode,
@@ -136,7 +135,7 @@ const NavigationSideItem = ({
         data-tooltip-delay-show={TOOLTIP_DELAY_SHOW}
         data-tooltip-class-name="hidden lg:flex"
         className={clsx(
-          'bg-linear-to-t from-[#f2f2f2] to-[#ffffff] dark:from-muted/40 dark:to-muted/60',
+          'game-nav-side bg-linear-to-t from-[#f2f2f2] to-[#ffffff] dark:from-muted/40 dark:to-muted/60',
           'flex items-center justify-center shadow-md rounded-md px-3 py-2 border border-[#f1f1f1] dark:border-border relative',
           'transition-[background-color,border-color,transform] active:scale-95 active:shadow-inner',
           'lg:size-12 lg:p-0 lg:rounded-full lg:shadow lg:border-0 lg:from-[#a3a3a3] lg:to-[#c8c8c8]',
@@ -347,20 +346,13 @@ const NavigationMainItem = ({ children, ...rest }: NavigationMainItemProps) => {
       data-tooltip-delay-show={TOOLTIP_DELAY_SHOW}
       tabIndex={0}
       className={({ isActive }) =>
-        clsx(
-          isActive
-            ? 'before:from-[#7da100] before:to-[#c7e94f] lg:hover:before:from-[#728f00] lg:hover:before:to-[#b8dc45] after:from-[#5d7a00] after:to-[#8fb020] lg:hover:after:from-[#4a6100] lg:hover:after:to-[#738e1a]'
-            : 'before:from-[#b8b2a9] before:to-[#f1f0ee] lg:hover:before:from-[#aba5a0] lg:hover:before:to-[#e8e7e5] after:from-[#2a2a2a] after:to-[#404040] lg:hover:after:from-[#222222] lg:hover:after:to-[#333333]',
-          'relative isolate overflow-hidden size-14 lg:size-18 rounded-full flex items-center justify-center shadow-lg lg:shadow-none',
-          'before:absolute before:inset-0 before:bg-linear-to-t before:transition-opacity before:content-[""]',
-          'after:absolute after:inset-0 after:bg-linear-to-t after:opacity-0 after:transition-opacity after:content-[""]',
-          'dark:before:opacity-0 dark:after:opacity-100 transition-transform transform-gpu active:scale-95',
-        )
+        clsx('game-nav-main', isActive && 'is-active')
       }
       {...rest}
     >
-      <span className="relative z-10 size-12 lg:size-15 bg-background rounded-full flex items-center justify-center">
-        {children}
+      <span className="flex items-center justify-center">{children}</span>
+      <span className="hidden text-[10px] font-semibold lg:block">
+        {rest['aria-label']}
       </span>
     </NavLink>
   );
@@ -488,16 +480,14 @@ const ResourceCounters = () => {
   const showDetails = isWiderThanLg || areMobileDetailsVisible;
 
   const counters = (
-    <div className="flex w-full lg:border-none py-0.5 mx-auto gap-1 lg:gap-2">
+    <div className="grid w-full grid-cols-4 gap-1 py-1 sm:gap-2">
       {(['wood', 'clay', 'iron', 'wheat'] satisfies Resource[]).map(
-        (resource: Resource, index) => (
-          <Fragment key={resource}>
-            <ResourceCounter
-              resource={resource}
-              showDetails={showDetails}
-            />
-            {index !== 3 && <span className="w-0.5 h-full bg-border" />}
-          </Fragment>
+        (resource) => (
+          <ResourceCounter
+            key={resource}
+            resource={resource}
+            showDetails={showDetails}
+          />
         ),
       )}
     </div>
@@ -564,7 +554,7 @@ const VillageSelect = () => {
       <SelectTrigger
         title={t('Village select')}
         aria-label={t('Village select')}
-        className="flex flex-1"
+        className="flex min-w-0 flex-1"
       >
         <SelectValue>{currentVillageLabel}</SelectValue>
       </SelectTrigger>
@@ -615,10 +605,10 @@ const TopNavigation = ({ onDeveloperToolsToggle }: TopNavigationProps) => {
   const { preferences } = usePreferences();
 
   return (
-    <header className="flex flex-col w-full px-safe-or-2 pb-1 lg:px-safe lg:py-0 relative bg-linear-to-r from-gray-200 via-white to-gray-200 dark:from-muted/60 dark:via-card dark:to-muted/60">
+    <header className="game-top-navigation flex flex-col w-full px-safe-or-2 pb-1 lg:px-safe lg:py-0 relative bg-linear-to-r from-gray-200 via-white to-gray-200 dark:from-muted/60 dark:via-card dark:to-muted/60">
       {isWiderThanLg && (
-        <div className="flex-col hidden lg:flex shadow-sm bg-card">
-          <div className="hidden lg:flex w-full bg-muted py-1 px-2">
+        <div className="flex-col hidden lg:flex bg-card">
+          <div className="hidden lg:flex w-full border-b border-border/60 bg-card py-1 px-2">
             <nav className="hidden lg:flex justify-between container mx-auto">
               <ul className="flex gap-1">
                 <li>
@@ -699,14 +689,14 @@ const TopNavigation = ({ onDeveloperToolsToggle }: TopNavigationProps) => {
               </ul>
             </nav>
           </div>
-          <div className="flex justify-between container mx-2 xl:mx-auto">
+          <div className="flex justify-between container mx-auto px-2 py-2">
             <div className="flex flex-1 items-center gap-2">
               <Suspense fallback={null}>
                 <VillageSelect />
               </Suspense>
               <VillageOverviewDesktopItem />
             </div>
-            <nav className="flex flex-4 justify-center w-fit lg:-translate-y-5 max-h-11 pt-1">
+            <nav className="flex flex-4 justify-center w-fit max-h-16">
               <ul className="hidden lg:flex gap-3 justify-center items-center">
                 <li>
                   <ReportsNavigationItem />
@@ -715,11 +705,11 @@ const TopNavigation = ({ onDeveloperToolsToggle }: TopNavigationProps) => {
                   <QuestsNavigationItem />
                 </li>
                 <li>
-                  <ul className="flex mx-1">
+                  <ul className="flex gap-2 mx-1">
                     <li>
                       <ResourcesNavigationItem />
                     </li>
-                    <li className="z-2 -mx-2">
+                    <li className="z-2">
                       <VillageNavigationItem />
                     </li>
                     <li>
@@ -749,13 +739,13 @@ const TopNavigation = ({ onDeveloperToolsToggle }: TopNavigationProps) => {
         </div>
       )}
       {!isWiderThanLg && (
-        <div className="flex justify-between items-center text-center lg:hidden h-14 w-full max-w-xl mx-auto gap-8">
+        <div className="flex justify-between items-center text-center lg:hidden h-14 w-full max-w-xl mx-auto gap-3">
           <VillageOverviewMobileItem />
           <VillageSelect />
           <HeroNavigationItem />
         </div>
       )}
-      <div className="flex relative rounded-b-md px-2 lg:absolute top-full lg:-bottom-16 left-1/2 -translate-x-1/2 bg-card max-w-xl w-full lg:z-5 shadow-lg dark:shadow-none">
+      <div className="game-resource-panel flex relative px-2 lg:absolute top-full left-1/2 -translate-x-1/2 max-w-xl w-full lg:z-5">
         <ResourceCounters />
       </div>
     </header>
@@ -856,17 +846,13 @@ const MobileBottomNavigation = ({
 
   useCenterHorizontally(container, centeredElement);
 
-  // Basically, fixed header, overflow-x & translate-y do not work together at all.
-  // There's always either non-working scroll or elements being cut. The way it works now is that technically, nothing is overflowing with translate,
-  // we just have a transparent container and some very hacky gradient to make it look like it works.
-  // There's also massive Tailwind brain rot on display here. :S
   return (
-    <header className="isolate lg:hidden fixed bottom-0 left-0 z-20 w-full px-safe pb-safe-or-8 [contain:paint] transition-[bottom] before:pointer-events-none before:absolute before:inset-0 before:bg-[linear-gradient(0deg,rgba(255,255,255,1)_0%,rgba(232,232,232,1)_83%,rgba(255,255,255,1)_83.1%,rgba(255,255,255,1)_84%,rgba(255,255,255,0)_84.1%,rgba(255,255,255,0)_100%)] before:transition-opacity after:pointer-events-none after:absolute after:inset-0 after:bg-[linear-gradient(0deg,var(--background)_0%,var(--card)_83%,var(--background)_83.1%,var(--background)_84%,transparent_84.1%,transparent_100%)] after:opacity-0 after:transition-opacity dark:before:opacity-0 dark:after:opacity-100">
+    <header className="game-mobile-navigation isolate lg:hidden fixed bottom-0 left-0 z-20 w-full px-safe pb-safe-or-3 [contain:paint]">
       <nav
         ref={container}
         className="relative z-10 flex flex-col w-full overflow-x-scroll scrollbar-hidden"
       >
-        <ul className="flex w-fit gap-2 justify-between items-center px-2 pt-5 pb-2 mx-auto">
+        <ul className="flex w-fit gap-2 justify-between items-center px-2 pt-3 pb-2 mx-auto">
           <li>
             <Link
               target="_blank"
@@ -889,12 +875,12 @@ const MobileBottomNavigation = ({
             <QuestsNavigationItem />
           </li>
           <li>
-            <ul className="flex -translate-y-3 mx-1">
+            <ul className="flex gap-1 mx-1">
               <li>
                 <ResourcesNavigationItem />
               </li>
               <li
-                className="z-2 -mx-2"
+                className="z-2"
                 ref={centeredElement}
               >
                 <VillageNavigationItem />

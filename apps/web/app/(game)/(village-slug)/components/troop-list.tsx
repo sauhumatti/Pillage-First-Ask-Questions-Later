@@ -32,7 +32,7 @@ const TroopListContent = () => {
   );
 
   return (
-    <aside className="fixed right-safe bottom-[calc(max(var(--twsa-safe-area-inset-bottom),2rem)+4.5rem)] lg:bottom-14 flex lg:flex-col gap-1 bg-background/80 p-1 shadow-xs border-border rounded-r-none rounded-xs transition-[background-color,border-color,bottom,color,right]">
+    <aside className="game-troop-panel fixed right-safe bottom-[calc(max(var(--twsa-safe-area-inset-bottom),2rem)+4.5rem)] lg:bottom-14 flex lg:flex-col gap-1 bg-background/80 p-1 shadow-xs border-border rounded-r-none rounded-xs transition-[background-color,border-color,bottom,color,right]">
       <div
         data-tooltip-id={tooltipId}
         className="flex flex-col relative cursor-pointer transition-colors"
@@ -43,7 +43,7 @@ const TroopListContent = () => {
       <Tooltip
         key={tooltipKey}
         id={tooltipId}
-        className="z-20! rounded-xs! px-2! py-1! bg-background! text-foreground! border border-border transition-colors"
+        className="z-20! rounded-xl! px-4! py-3! shadow-lg! bg-background! text-foreground! border border-border transition-colors"
         classNameArrow="border-r border-b border-border transition-colors"
         clickable
         place="top-start"
